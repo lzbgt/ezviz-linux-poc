@@ -196,7 +196,7 @@ typedef struct ST_ES_STREAM_CALLBACK
  *  \note
  *  该接口必须在调用其他接口之前调用
  */
-int ESOpenSDK_Init(unsigned int tcp_max_threads = 12,unsigned int ssl_max_threads = 1);
+int ESOpenSDK_Init(unsigned int tcp_max_threads,unsigned int ssl_max_threads);
 
 /** 
  *  \brief  反初始化库
