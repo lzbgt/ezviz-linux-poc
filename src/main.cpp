@@ -16,6 +16,10 @@ using json = nlohmann::json;
 
 mutex g_pages_mutex;
 
+#define OPENADDR "https://open.ys7.com"
+#define ENV_VIDEO_DIR "YS_VIDEO_DIR"
+#define DEFAULT_VIDEO_DIR "videos"
+
 /*
 token, sn, code
 action:
@@ -131,7 +135,7 @@ safe_vector<ES_RECORD_INFO *> * search_records(string token, ST_ES_DEVICE_INFO &
 }
 
 // download records
-void get_records(string token, ST_ES_DEVICE_INFO& dev, safe_vector<ES_RECORD_INFO *> * recList) {
+void get_records(string token, ST_ES_DEVICE_INFO& dev, safe_vector<ES_RECORD_INFO *> * recList, string dir) {
     cout <<"get records" << endl;
     thread *threads = new thread[8];
     for (int i = 0; i < 8; i++)
@@ -154,6 +158,7 @@ void get_records(string token, ST_ES_DEVICE_INFO& dev, safe_vector<ES_RECORD_INF
                     cout <<"secs: " << secs<< endl;
                     strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", &tm1);
                     string filename = tmStr;
+                    filename = dir + "/" + filename;
                     filename += string("_") + string(dev.szDevSerial) + "_" + to_string(secs) + ".mpg";
                     ofstream *fout = new ofstream();
                     fout->open(filename, ios_base::binary|ios_base::trunc);
@@ -168,7 +173,7 @@ void get_records(string token, ST_ES_DEVICE_INFO& dev, safe_vector<ES_RECORD_INF
                     }
                     cbd.fout->flush();
                     cbd.fout->close();
-                    cout << "file " << filename << "downloaded!" << " looking for next record" <<endl;
+                    cout << "file " << filename << "downloaded!" << " looking for next record. remains: "<< recList->size() <<endl;
                     delete cbd.fout;
                     // fetch next record
                 }
@@ -207,10 +212,20 @@ int main(int argc, char *argv[])
         cout << make_man_page(cli, argv[0]);
         return 1;
     }
+    const char * dir = getenv(ENV_VIDEO_DIR);
 
+    if(dir == NULL) {
+        dir = DEFAULT_VIDEO_DIR;
+    }
+
+    if (mkdir(dir, 0777) != 0)
+    {
+        cout << "can't ceate video directory: " << dir << endl;
+        return 1;
+    }
     // init sdk
     ret = ESOpenSDK_Init(2, 1);
-    ESOpenSDK_InitWithAppKey(appKey.c_str(), "https://open.ys7.com");
+    ESOpenSDK_InitWithAppKey(appKey.c_str(), OPENADDR);
     if(0 != ret) {
         cout<< "error init sdk" << endl;
         exit(1);
@@ -259,7 +274,7 @@ int main(int argc, char *argv[])
                 delete recList;
             }else{
                 // get each
-                get_records(token, dev, recList);
+                get_records(token, dev, recList, dir);
 
             }
             break;
