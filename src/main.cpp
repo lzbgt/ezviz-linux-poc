@@ -14,15 +14,14 @@
 #include <iostream>
 #include <unistd.h>
 #include <list>
+#include <thread>
 #include <mutex>
 #include <time.h>
 #include <csignal>
 #include <filesystem>
 #include <sstream>
-#include <future>
 #include "json.hpp"
 #include "clipp.hpp"
-#include "httplib.hpp"
 
 #define OPENADDR "https://open.ys7.com"
 #define ENV_VIDEO_DIR "YS_VIDEO_DIR"
@@ -35,25 +34,11 @@ volatile sig_atomic_t gSignalStatus = 0;
 
 void signal_handler(int signal)
 {
-    if(SIGINT == signal) {
+    if (SIGINT == signal)
+    {
         gSignalStatus = SIGINT;
     }
 }
-
-/*
-token, sn, code
-action:
-    config token
-    devinfo
-    record
-        list [s e t]
-        get [s e t]
-    play
-
-
-- config
-- download
-*/
 
 typedef enum ACTION
 {
@@ -104,29 +89,13 @@ public:
         return vec.size();
     }
 
-    vector<T>& get() {
+    vector<T> &get()
+    {
         return vec;
     }
 };
-template<typename T>
-mutex safe_vector<T>::_m;
-
 template <typename T>
-class safe_list
-{
-    private:
-    list<T> _list = list<T>{};
-    static mutex _m;
-
-    public:
-    list<T> &get(){
-        return _list;
-    }
-
-
-};
-template<typename T>
-mutex safe_list<T>::_m;
+mutex safe_vector<T>::_m;
 
 int msgCb(HANDLE pHandle, int code, int eventType, void *pUser)
 {
@@ -134,7 +103,8 @@ int msgCb(HANDLE pHandle, int code, int eventType, void *pUser)
     CBUSERDATA *cbd = (CBUSERDATA *)pUser;
     if (eventType != 0 || code == ES_STREAM_CLIENT_RET_OVER)
     {
-        if(cbd != NULL) {
+        if (cbd != NULL)
+        {
             cbd->stat = 0;
         }
     }
@@ -154,7 +124,8 @@ int dataCb(HANDLE pHandle, unsigned int dataType, unsigned char *buf, unsigned i
     }
     else if (ES_STREAM_TYPE::ES_STREAM_END == dataType)
     {
-        if(cbd != NULL) {
+        if (cbd != NULL)
+        {
             cbd->stat = 0;
         }
     }
@@ -199,7 +170,7 @@ safe_vector<ES_RECORD_INFO *> *search_records(string token, ST_ES_DEVICE_INFO &d
     ret = ESOpenSDK_SearchVideoRecord(token.c_str(), dev, ri, &pOut, &length);
     if (0 != ret)
     {
-        cout <<"failed search video: " << ret << endl;
+        cout << "failed search video: " << ret << endl;
         return recList;
     }
     json j = json::parse((char *)pOut);
@@ -229,7 +200,8 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
     cout << "get records" << endl;
     int num = 8;
     int numRec = recList->size();
-    if(num > numRec) {
+    if (num > numRec)
+    {
         num = numRec;
     }
 
@@ -277,21 +249,22 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
                     {
                         jRet["code"] = 3;
                         jRet["message"] = "failed to playback";
-                        cout << jRet.dump()<<endl;
+                        cout << jRet.dump() << endl;
                         delete cbd.fout;
                         return;
                     }
-                    
+
                     while (cbd.stat == 1)
                     {
                         usleep(1000 * 1000 * 4);
                         cout << "snap for downloading to finish..." << endl;
                         cout << "send kill(SIGINT) to stop" << endl;
-                        if(gSignalStatus == SIGINT) {
+                        if (gSignalStatus == SIGINT)
+                        {
                             break;
                         }
                     }
-                    
+
                     ESOpenSDK_StopPlayBack(handle);
                     cbd.fout->flush();
                     cbd.fout->close();
@@ -300,10 +273,10 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
                     jRet["code"] = 0;
                     jRet["message"] = "task done";
                     jRet["remains"] = recList->size();
-                    cout <<jRet.dump()<<endl;
+                    cout << jRet.dump() << endl;
                     // fetch next record
                 } // p null
-            } // while
+            }     // while
         });
     } // end for
 
@@ -336,8 +309,8 @@ int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
     }
 
     string filename = dir + "/";
-    time_t currTime = time(NULL); 
-    tm* now = localtime(&currTime);
+    time_t currTime = time(NULL);
+    tm *now = localtime(&currTime);
     strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", now);
     filename += string(dev.szDevSerial) + "_" + tmStr + ".mpg";
     ofstream *fout = new ofstream();
@@ -360,7 +333,8 @@ int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
         {
             usleep(1000 * 1000 * 4);
             cout << "recording ... send kill(SIGINT) to stop" << endl;
-            if(gSignalStatus == SIGINT) {
+            if (gSignalStatus == SIGINT)
+            {
                 ESOpenSDK_StopRealPlay(handle);
                 ESOpenSDK_FreeData(handle);
                 fout->flush();
@@ -375,137 +349,12 @@ int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
     return ret;
 }
 
-// http server
-void http_server()
-{
-#define mk_param(p) \
-    {               \
-#p, &p      \
-    }
-#define MAX_RUNNING_JOB 10
-
-    using namespace httplib;
-    typedef safe_vector<ES_RECORD_INFO *> *RECORD_P_VEC_PTR;
-    typedef struct DOWNLOAD_REC_JOB
-    {
-        RECORD_P_VEC_PTR recordsPtrVecPtr;
-        thread thJob;
-    } DOWNLOAD_REC_JOB;
-
-    Server svr;
-
-    svr.Get("/records/list", [](const Request &req, Response &res) {
-        bool flag = true;
-        string devsn, devkey, appkey, token, start, end;
-        int chanId = 1;
-        json ret;
-        if (req.has_param("chanid"))
-        {
-            chanId = stoi(req.get_param_value("chanid"));
-        }
-
-        // assert params
-        std::unordered_map<const char *, string *> params = {
-            mk_param(devsn),
-            mk_param(devkey),
-            mk_param(appkey),
-            mk_param(token),
-            mk_param(start),
-            mk_param(end)};
-        for (auto &p : params) 
-        {
-            *(p.second) = req.get_param_value(p.first);
-            if ((*(p.second)).empty())
-            {
-                ret["code"] = 1;
-                ret["message"] = string("missing param: ") + p.first;
-                res.set_content(ret.dump(), "application/json");
-                return;
-            }
-        }
-
-        // ready to go
-        ST_ES_DEVICE_INFO dev = {"", 1, ""};
-        std::strncpy(dev.szDevSerial, devsn.c_str(), sizeof(dev.szDevSerial));
-        std::strncpy(dev.szSafeKey, devkey.c_str(), sizeof(dev.szSafeKey));
-        dev.iDevChannelNo = chanId;
-        ret = search_records_json(token, dev, start, end);
-        res.set_content(ret.dump(), "application/json");
-    });
-
-    // track jobs
-    safe_vector<DOWNLOAD_REC_JOB *> *recJobs = new safe_vector<DOWNLOAD_REC_JOB *>();
-    svr.Get("/records/download", [&recJobs](const Request &req, Response &res) {
-        bool flag = true;
-        string devsn, devkey, appkey, token, start, end;
-        int chanId = 1;
-        json ret;
-        if (req.has_param("chanid"))
-        {
-            chanId = stoi(req.get_param_value("chanid"));
-        }
-        // assert params
-        std::unordered_map<const char *, string *> params = {
-            mk_param(devsn),
-            mk_param(devkey),
-            mk_param(appkey),
-            mk_param(token),
-            mk_param(start),
-            mk_param(end)};
-        for (auto &p : params)
-        {
-            *(p.second) = req.get_param_value(p.first);
-            if ((*(p.second)).empty())
-            {
-                ret["code"] = 1;
-                ret["message"] = string("missing param: ") + p.first;
-                res.set_content(ret.dump(), "application/json");
-                return;
-            }
-        }
-
-        // ready to go
-        ST_ES_DEVICE_INFO dev = {"", 1, ""};
-        std::strncpy(dev.szDevSerial, devsn.c_str(), sizeof(dev.szDevSerial));
-        std::strncpy(dev.szSafeKey, devkey.c_str(), sizeof(dev.szSafeKey));
-        dev.iDevChannelNo = chanId;
-        ret = search_records_json(token, dev, start, end);
-        RECORD_P_VEC_PTR recList = search_records(token, dev, start, end);
-        DOWNLOAD_REC_JOB *recJobPtr = new DOWNLOAD_REC_JOB();
-        recJobPtr->recordsPtrVecPtr = recList;
-        // recJobPtr->thJob = thread([&] {
-        //     // TODO:
-        //     get_records(token, dev, recList, gVideoDir);
-        //     // for (int i = 0; i < numThreads; i++)
-        //     // {
-        //     //     if (threads[i].joinable())
-        //     //     {
-        //     //         threads[i].join();
-        //     //     }
-        //     // }
-        // });
-
-        // if(recJobPtr->thJob.joinable()){
-        //     recJobPtr->thJob.detach();
-        // }
-
-        // recJobs->push_back(recJobPtr);
-
-        ret["code"] = 0;
-        ret["message"] = "video records downloading task is running on server";
-
-        res.set_content(ret.dump(), "application/json");
-    });
-
-    svr.listen("0.0.0.0", 80);
-}
-
 const char *gVideoDir = getenv(ENV_VIDEO_DIR);
 
 int main(int argc, char *argv[])
 {
     using namespace clipp;
-    int ret = 0, chanId = 1, qualityLvl=3;
+    int ret = 0, chanId = 1, qualityLvl = 3;
     string appKey, appSecret, devSn, devCode, token, startTime, endTime;
     int numTcpThreads, numSslThreads;
     auto action = ACTION::NONE;
@@ -515,9 +364,9 @@ int main(int argc, char *argv[])
                      (command("list").set(action, ACTION::RECORDS_LIST) |
                       command("get").set(action, ACTION::RECORDS_GET)),
                      value("chanId", chanId), value("startTime", startTime), value("endTime", endTime)) |
-                    command("rtstream").set(action, ACTION::RTSTREAM), value("qualityLvl", qualityLvl),
-                value("devSn", devSn), value("devCode", devCode), value("appKey", appKey), value("token", token)) |
-               command("server").set(action, ACTION::SERVER);
+                    command("rtstream").set(action, ACTION::RTSTREAM),
+                value("qualityLvl", qualityLvl),
+                value("devSn", devSn), value("devCode", devCode), value("appKey", appKey), value("token", token));
 
     if (!parse(argc, argv, cli))
     {
@@ -600,9 +449,9 @@ int main(int argc, char *argv[])
         else
         {
             // get each
-            cout <<"fetching records" <<endl;
+            cout << "fetching records" << endl;
             get_records(token, dev, recList, gVideoDir);
-            
+
             //delete threads;
             cout << "all jobs done!" << endl;
             cout << "delete all memory records";
@@ -622,7 +471,6 @@ int main(int argc, char *argv[])
     }
     case ACTION::SERVER:
     {
-        http_server();
         break;
     }
     }
