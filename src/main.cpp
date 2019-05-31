@@ -382,7 +382,7 @@ void http_server()
     typedef struct DOWNLOAD_REC_JOB
     {
         RECORD_P_VEC_PTR recordsPtrVecPtr;
-        thread *thJob;
+        thread thJob;
     } DOWNLOAD_REC_JOB;
 
     Server svr;
@@ -466,7 +466,7 @@ void http_server()
         RECORD_P_VEC_PTR recList = search_records(token, dev, start, end);
         DOWNLOAD_REC_JOB *recJobPtr = new DOWNLOAD_REC_JOB();
         recJobPtr->recordsPtrVecPtr = recList;
-        recJobPtr->thJob = new thread([&] {
+        recJobPtr->thJob = thread([&] {
             // TODO:
             get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
             // for (int i = 0; i < numThreads; i++)
@@ -476,12 +476,10 @@ void http_server()
             //         threads[i].join();
             //     }
             // }
-            
-            cout << "all job done!" << endl;
         });
 
-        if(recJobPtr->thJob->joinable()){
-            recJobPtr->thJob->detach();
+        if(recJobPtr->thJob.joinable()){
+            recJobPtr->thJob.detach();
         }
 
         recJobs->push_back(recJobPtr);
