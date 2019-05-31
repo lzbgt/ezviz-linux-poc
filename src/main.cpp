@@ -24,13 +24,21 @@
 #include "clipp.hpp"
 #include "httplib.hpp"
 
+#define OPENADDR "https://open.ys7.com"
+#define ENV_VIDEO_DIR "YS_VIDEO_DIR"
+#define DEFAULT_VIDEO_DIR "videos"
 namespace fs = std::filesystem;
 using namespace std;
 using json = nlohmann::json;
 
-#define OPENADDR "https://open.ys7.com"
-#define ENV_VIDEO_DIR "YS_VIDEO_DIR"
-#define DEFAULT_VIDEO_DIR "videos"
+volatile sig_atomic_t gSignalStatus = 0;
+
+void signal_handler(int signal)
+{
+    if(SIGINT == signal) {
+        gSignalStatus = SIGINT;
+    }
+}
 
 /*
 token, sn, code
@@ -148,6 +156,7 @@ int dataCb(HANDLE pHandle, unsigned int dataType, unsigned char *buf, unsigned i
 
     return 0;
 }
+
 json search_records_json(string token, ST_ES_DEVICE_INFO &dev, string startTime, string endTime)
 {
     int ret = 0;
@@ -210,7 +219,7 @@ safe_vector<ES_RECORD_INFO *> *search_records(string token, ST_ES_DEVICE_INFO &d
 }
 
 // download records
-thread * get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INFO *> *recList, string dir)
+void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INFO *> *recList, string dir)
 {
     cout << "get records" << endl;
     int num = 8;
@@ -219,7 +228,7 @@ thread * get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD
         num = numRec;
     }
 
-    thread *threads = new thread[num];
+    thread threads[num];
 
     for (int i = 0; i < num; i++)
     {
@@ -271,12 +280,17 @@ thread * get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD
                     while (cbd.stat == 1)
                     {
                         usleep(1000 * 1000 * 4);
-                        cout << "snap for downloading to finish" << endl;
+                        cout << "snap for downloading to finish..." << endl;
+                        usleep(1000 * 1000 * 4);
+                        cout << "send kill(SIGINT) to stop" << endl;
+                        if(gSignalStatus == SIGINT) {
+                            break;
+                        }
                     }
-
+                    ESOpenSDK_StopPlayBack(handle);
                     cbd.fout->flush();
                     cbd.fout->close();
-                    ESOpenSDK_StopPlayBack(handle);
+                    
                     delete cbd.fout;
                     jRet["code"] = 0;
                     jRet["message"] = "task done";
@@ -298,22 +312,8 @@ thread * get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD
         }
     }
 
-    return threads;
-
-    // cout << "all threads finished!" << endl;
-    // // delete threads;
-    //return workers;
+    return;
 }
-
-volatile sig_atomic_t gSignalStatus = 0;
-
-void signal_handler(int signal)
-{
-    if(SIGINT == signal) {
-        gSignalStatus = SIGINT;
-    }
-}
-
 
 // download realtime stream
 int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
@@ -332,7 +332,10 @@ int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
     }
 
     string filename = dir + "/";
-    filename += string(dev.szDevSerial) + "_" + ".mpg";
+    time_t currTime = time(NULL); 
+    tm* now = localtime(&currTime);
+    strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", now);
+    filename += string(dev.szDevSerial) + "_" + tmStr + ".mpg";
     ofstream *fout = new ofstream();
     fout->open(filename, ios_base::binary | ios_base::trunc);
     cout << "filename: " << filename << endl;
@@ -355,7 +358,7 @@ int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
             cout << "recording ... send kill(SIGINT) to stop" << endl;
             if(gSignalStatus == SIGINT) {
                 ESOpenSDK_StopRealPlay(handle);
-                //ESOpenSDK_FreeData(handle);
+                ESOpenSDK_FreeData(handle);
                 fout->flush();
                 fout->close();
                 delete fout;
@@ -466,23 +469,23 @@ void http_server()
         RECORD_P_VEC_PTR recList = search_records(token, dev, start, end);
         DOWNLOAD_REC_JOB *recJobPtr = new DOWNLOAD_REC_JOB();
         recJobPtr->recordsPtrVecPtr = recList;
-        recJobPtr->thJob = thread([&] {
-            // TODO:
-            get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
-            // for (int i = 0; i < numThreads; i++)
-            // {
-            //     if (threads[i].joinable())
-            //     {
-            //         threads[i].join();
-            //     }
-            // }
-        });
+        // recJobPtr->thJob = thread([&] {
+        //     // TODO:
+        //     get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
+        //     // for (int i = 0; i < numThreads; i++)
+        //     // {
+        //     //     if (threads[i].joinable())
+        //     //     {
+        //     //         threads[i].join();
+        //     //     }
+        //     // }
+        // });
 
-        if(recJobPtr->thJob.joinable()){
-            recJobPtr->thJob.detach();
-        }
+        // if(recJobPtr->thJob.joinable()){
+        //     recJobPtr->thJob.detach();
+        // }
 
-        recJobs->push_back(recJobPtr);
+        // recJobs->push_back(recJobPtr);
 
         ret["code"] = 0;
         ret["message"] = "video records downloading task is running on server";
@@ -582,29 +585,27 @@ int main(int argc, char *argv[])
         // no records
         if (action == ACTION::RECORDS_LIST)
         {
-            // cout << "delete all memory records";
-            // for (auto &r : recList->get())
-            // {
-            //     delete r;
-            // }
-            // delete recList;
+            cout << "delete all memory records";
+            for (auto &r : recList->get())
+            {
+                delete r;
+            }
+            delete recList;
         }
         else
         {
             // get each
             cout <<"fetching records" <<endl;
-            thread *threads = get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
-            // for (int i = 0; i < numThreads; i++)
-            // {
-            //     if (threads[i].joinable())
-            //     {
-            //         threads[i].join();
-            //     }
-            // }
+            get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
             
             //delete threads;
             cout << "all job done!" << endl;
-            usleep(1000*1000*100);
+            cout << "delete all memory records";
+            for (auto &r : recList->get())
+            {
+                delete r;
+            }
+            delete recList;
         }
         break;
     }
