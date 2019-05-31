@@ -375,9 +375,9 @@ int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
     return ret;
 }
 
+// http server
 void http_server()
 {
-// http server
 #define mk_param(p) \
     {               \
 #p, &p      \
@@ -394,7 +394,7 @@ void http_server()
 
     Server svr;
 
-    svr.Get("/records_list", [](const Request &req, Response &res) {
+    svr.Get("/records/list", [](const Request &req, Response &res) {
         bool flag = true;
         string devsn, devkey, appkey, token, start, end;
         int chanId = 1;
@@ -435,7 +435,7 @@ void http_server()
 
     // track jobs
     safe_vector<DOWNLOAD_REC_JOB *> *recJobs = new safe_vector<DOWNLOAD_REC_JOB *>();
-    svr.Get("/records_get", [&recJobs](const Request &req, Response &res) {
+    svr.Get("/records/download", [&recJobs](const Request &req, Response &res) {
         bool flag = true;
         string devsn, devkey, appkey, token, start, end;
         int chanId = 1;
@@ -475,7 +475,7 @@ void http_server()
         recJobPtr->recordsPtrVecPtr = recList;
         // recJobPtr->thJob = thread([&] {
         //     // TODO:
-        //     get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
+        //     get_records(token, dev, recList, gVideoDir);
         //     // for (int i = 0; i < numThreads; i++)
         //     // {
         //     //     if (threads[i].joinable())
@@ -500,6 +500,8 @@ void http_server()
     svr.listen("0.0.0.0", 80);
 }
 
+const char *gVideoDir = getenv(ENV_VIDEO_DIR);
+
 int main(int argc, char *argv[])
 {
     using namespace clipp;
@@ -523,20 +525,19 @@ int main(int argc, char *argv[])
         cout << make_man_page(cli, argv[0]);
         return 1;
     }
-    const char *dir = getenv(ENV_VIDEO_DIR);
 
-    //if (dir == NULL)
-    //{
-    dir = DEFAULT_VIDEO_DIR;
-    //}
-    if (!fs::exists(dir))
+    if (gVideoDir == NULL)
     {
-        if (!fs::create_directory(dir))
+        gVideoDir = DEFAULT_VIDEO_DIR;
+    }
+    if (!fs::exists(gVideoDir))
+    {
+        if (!fs::create_directory(gVideoDir))
         {
-            cout << "can't create directory: " << dir << endl;
+            cout << "can't create directory: " << gVideoDir << endl;
             exit(1);
         }
-        fs::permissions(dir, fs::perms::all);
+        fs::permissions(gVideoDir, fs::perms::all);
     }
     // init sdk
     ret = ESOpenSDK_Init(2, 1);
@@ -600,10 +601,10 @@ int main(int argc, char *argv[])
         {
             // get each
             cout <<"fetching records" <<endl;
-            get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
+            get_records(token, dev, recList, gVideoDir);
             
             //delete threads;
-            cout << "all job done!" << endl;
+            cout << "all jobs done!" << endl;
             cout << "delete all memory records";
             for (auto &r : recList->get())
             {
@@ -616,7 +617,7 @@ int main(int argc, char *argv[])
     case ACTION::RTSTREAM:
     {
         // play to file
-        ret = get_rtstream(token, dev, dir, qualityLvl);
+        ret = get_rtstream(token, dev, gVideoDir, qualityLvl);
         break;
     }
     case ACTION::SERVER:
