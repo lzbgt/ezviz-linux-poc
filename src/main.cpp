@@ -132,10 +132,13 @@ int msgCb(HANDLE pHandle, int code, int eventType, void *pUser)
 {
     cout << "=====> msg h: " << pHandle << " code: " << code << " evt: " << eventType << " pd: " << pUser << endl;
     CBUSERDATA *cbd = (CBUSERDATA *)pUser;
-    if (code == ES_STREAM_CODE::ES_STREAM_CLIENT_RET_OVER)
+    if (eventType != 0 || code == ES_STREAM_CLIENT_RET_OVER)
     {
-        cbd->stat = 0;
+        if(cbd != NULL) {
+            cbd->stat = 0;
+        }
     }
+
     return 0;
 }
 
@@ -151,7 +154,9 @@ int dataCb(HANDLE pHandle, unsigned int dataType, unsigned char *buf, unsigned i
     }
     else if (ES_STREAM_TYPE::ES_STREAM_END == dataType)
     {
-        cbd->stat = 0;
+        if(cbd != NULL) {
+            cbd->stat = 0;
+        }
     }
 
     return 0;
@@ -281,17 +286,17 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
                     {
                         usleep(1000 * 1000 * 4);
                         cout << "snap for downloading to finish..." << endl;
-                        usleep(1000 * 1000 * 4);
                         cout << "send kill(SIGINT) to stop" << endl;
                         if(gSignalStatus == SIGINT) {
                             break;
                         }
                     }
+                    
                     ESOpenSDK_StopPlayBack(handle);
                     cbd.fout->flush();
                     cbd.fout->close();
-                    
                     delete cbd.fout;
+
                     jRet["code"] = 0;
                     jRet["message"] = "task done";
                     jRet["remains"] = recList->size();
@@ -299,7 +304,6 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
                     // fetch next record
                 } // p null
             } // while
-            // return jResult;
         });
     } // end for
 
