@@ -16,6 +16,7 @@
 #include <list>
 #include <mutex>
 #include <time.h>
+#include <csignal>
 #include <filesystem>
 #include <sstream>
 #include <future>
@@ -184,6 +185,7 @@ safe_vector<ES_RECORD_INFO *> *search_records(string token, ST_ES_DEVICE_INFO &d
     ret = ESOpenSDK_SearchVideoRecord(token.c_str(), dev, ri, &pOut, &length);
     if (0 != ret)
     {
+        cout <<"failed search video: " << ret << endl;
         return recList;
     }
     json j = json::parse((char *)pOut);
@@ -208,13 +210,20 @@ safe_vector<ES_RECORD_INFO *> *search_records(string token, ST_ES_DEVICE_INFO &d
 }
 
 // download records
-void get_records(thread *threads, size_t num, string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INFO *> *recList, string dir)
+thread * get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INFO *> *recList, string dir)
 {
     cout << "get records" << endl;
+    int num = 8;
+    int numRec = recList->size();
+    if(num > numRec) {
+        num = numRec;
+    }
+
+    thread *threads = new thread[num];
+
     for (int i = 0; i < num; i++)
     {
         threads[i] = thread([&] {
-            json jResult;
             while (recList->size() > 0)
             {
                 // download one record
@@ -238,7 +247,7 @@ void get_records(thread *threads, size_t num, string token, ST_ES_DEVICE_INFO &d
                     cout << "filename: " << filename << endl;
                     ofstream *fout = new ofstream();
                     fout->open(filename, ios_base::binary | ios_base::trunc);
-                    cout << "filename: " << filename << endl;
+                    cout << "file opened: " << filename << endl;
                     CBUSERDATA cbd = {fout, 1};
                     ES_STREAM_CALLBACK scb = {msgCb, dataCb, (void *)&cbd};
                     HANDLE handle = NULL;
@@ -248,6 +257,7 @@ void get_records(thread *threads, size_t num, string token, ST_ES_DEVICE_INFO &d
                     jRet["end"] = string(rip->szStopTime);
                     jRet["rectype"] = rip->iRecType;
                     jRet["remains"] = recList->size() + 1;
+                    cout << "playback token: " << token << endl;
                     ret = ESOpenSDK_StartPlayBack(token.c_str(), dev, *rip, scb, handle);
                     if (0 != ret)
                     {
@@ -263,6 +273,7 @@ void get_records(thread *threads, size_t num, string token, ST_ES_DEVICE_INFO &d
                         usleep(1000 * 1000 * 4);
                         cout << "snap for downloading to finish" << endl;
                     }
+
                     cbd.fout->flush();
                     cbd.fout->close();
                     ESOpenSDK_StopPlayBack(handle);
@@ -271,23 +282,41 @@ void get_records(thread *threads, size_t num, string token, ST_ES_DEVICE_INFO &d
                     jRet["message"] = "task done";
                     jRet["remains"] = recList->size();
                     cout <<jRet.dump()<<endl;
-                    jResult.push_back(jRet);
                     // fetch next record
                 } // p null
             } // while
-
             // return jResult;
         });
     } // end for
 
     // // wait for all threads
+    for (int i = 0; i < num; i++)
+    {
+        if (threads[i].joinable())
+        {
+            threads[i].join();
+        }
+    }
+
+    return threads;
+
     // cout << "all threads finished!" << endl;
     // // delete threads;
     //return workers;
 }
 
+volatile sig_atomic_t gSignalStatus = 0;
+
+void signal_handler(int signal)
+{
+    if(SIGINT == signal) {
+        gSignalStatus = SIGINT;
+    }
+}
+
+
 // download realtime stream
-void get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
+int get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
 {
     cout << "get realtime streaming" << endl;
     int ret = 0;
@@ -299,7 +328,7 @@ void get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
         cout << "failed to set stream quality level to: " << level << endl;
         cout << "get supported level values by sub-command: "
              << " info " << endl;
-        return;
+        return ret;
     }
 
     string filename = dir + "/";
@@ -313,23 +342,30 @@ void get_rtstream(string token, ST_ES_DEVICE_INFO &dev, string dir, int level)
     ret = ESOpenSDK_StartRealPlay(token.c_str(), dev, scb, handle);
     if (0 != ret)
     {
-        cout << "failed to realtime play, dev: " << dev.szDevSerial << ", code: " << dev.szSafeKey << endl;
+        cout << "===== failed to realtime play, dev: " << dev.szDevSerial << ", code: " << dev.szSafeKey << endl;
+        return ret;
     }
     else
     {
-        while (1)
+        // setup signal handler
+        std::signal(SIGINT, signal_handler);
+        while (true)
         {
-            usleep(1000 * 1000);
-            // check cmd
-            cbd.fout->flush();
-            cbd.fout->close();
+            usleep(1000 * 1000 * 4);
+            cout << "recording ... send kill(SIGINT) to stop" << endl;
+            if(gSignalStatus == SIGINT) {
+                ESOpenSDK_StopRealPlay(handle);
+                //ESOpenSDK_FreeData(handle);
+                fout->flush();
+                fout->close();
+                delete fout;
+            }
+            // std::cout << "Sending signal " << SIGINT << '\n';
+            // std::raise(SIGINT);
         }
-        ESOpenSDK_StopRealPlay(handle);
     }
 
-    delete cbd.fout;
-    // fetch next record
-    // delete threads;
+    return ret;
 }
 
 void http_server()
@@ -431,17 +467,16 @@ void http_server()
         DOWNLOAD_REC_JOB *recJobPtr = new DOWNLOAD_REC_JOB();
         recJobPtr->recordsPtrVecPtr = recList;
         recJobPtr->thJob = new thread([&] {
-            const size_t numThreads = 8;
-            thread threads[numThreads] = {};
-            get_records(threads, numThreads, token, dev, recList, DEFAULT_VIDEO_DIR);
-            for (int i = 0; i < numThreads; i++)
-            {
-                if (threads[i].joinable())
-                {
-                    threads[i].join();
-                }
-            }
-            //
+            // TODO:
+            get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
+            // for (int i = 0; i < numThreads; i++)
+            // {
+            //     if (threads[i].joinable())
+            //     {
+            //         threads[i].join();
+            //     }
+            // }
+            
             cout << "all job done!" << endl;
         });
 
@@ -463,7 +498,7 @@ void http_server()
 int main(int argc, char *argv[])
 {
     using namespace clipp;
-    int ret = 0, chanId = 1;
+    int ret = 0, chanId = 1, qualityLvl=3;
     string appKey, appSecret, devSn, devCode, token, startTime, endTime;
     int numTcpThreads, numSslThreads;
     auto action = ACTION::NONE;
@@ -473,7 +508,7 @@ int main(int argc, char *argv[])
                      (command("list").set(action, ACTION::RECORDS_LIST) |
                       command("get").set(action, ACTION::RECORDS_GET)),
                      value("chanId", chanId), value("startTime", startTime), value("endTime", endTime)) |
-                    command("rtstream").set(action, ACTION::RTSTREAM),
+                    command("rtstream").set(action, ACTION::RTSTREAM), value("qualityLvl", qualityLvl),
                 value("devSn", devSn), value("devCode", devCode), value("appKey", appKey), value("token", token)) |
                command("server").set(action, ACTION::SERVER);
 
@@ -549,35 +584,36 @@ int main(int argc, char *argv[])
         // no records
         if (action == ACTION::RECORDS_LIST)
         {
-            cout << "delete all memory records";
+            // cout << "delete all memory records";
             // for (auto &r : recList->get())
             // {
             //     delete r;
             // }
-            delete recList;
+            // delete recList;
         }
         else
         {
             // get each
             cout <<"fetching records" <<endl;
-            const size_t numThreads = 8;
-            thread threads[numThreads] = {};
-            get_records(threads, numThreads, token, dev, recList, DEFAULT_VIDEO_DIR);
-            for (int i = 0; i < 8; i++)
-            {
-                if (threads[i].joinable())
-                {
-                    threads[i].join();
-                }
-            }
-            //
+            thread *threads = get_records(token, dev, recList, DEFAULT_VIDEO_DIR);
+            // for (int i = 0; i < numThreads; i++)
+            // {
+            //     if (threads[i].joinable())
+            //     {
+            //         threads[i].join();
+            //     }
+            // }
+            
+            //delete threads;
             cout << "all job done!" << endl;
+            usleep(1000*1000*100);
         }
         break;
     }
     case ACTION::RTSTREAM:
     {
         // play to file
+        ret = get_rtstream(token, dev, dir, qualityLvl);
         break;
     }
     case ACTION::SERVER:
@@ -589,5 +625,5 @@ int main(int argc, char *argv[])
 
     ESOpenSDK_Fini();
 
-    return 0;
+    return ret;
 }
