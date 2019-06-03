@@ -11,9 +11,10 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/EZServerOpenSDK/inc)
 link_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/EZServerOpenSDK/lib/linux64)
 
-set(FRAMEWORKLIB crypto ssl curl protobuf expat)
+set(FRAMEWORKLIB crypto ssl curl protobuf expat amqpcpp dl)
 set(LIB hpr hlog opensslwrap ys_net ezviz_streamclient ezserveropensdk)
 link_libraries(${FRAMEWORKLIB} ${LIB})
 
 set(SOURCE_FILES src/main.cpp)
 add_executable(ezviz ${SOURCE_FILES})
+#target_compile_definitions(ezviz PUBLIC __BYTE_ORDER = __LITTLE_ENDIAN)
