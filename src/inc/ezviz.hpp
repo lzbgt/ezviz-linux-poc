@@ -31,7 +31,7 @@ private:
     const int PRIORITY_RTRECORD = 10;
 
     AMQPHandler rabbitHandler;
-    EnvConfig envConfig;
+    EnvConfig envConfig = {};
     string ezvizToken;
 
 
@@ -108,7 +108,7 @@ private:
 
 public:
     // ctor
-    EZVizVideoService(EnvConfig envConfig)
+    EZVizVideoService(EnvConfig &envConfig)
     {
         // get env:
         //      threads config
