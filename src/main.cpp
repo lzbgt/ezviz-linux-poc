@@ -12,6 +12,7 @@
 int main() {
     // get env
     EnvConfig envConfig = {};
+    
     EZVizVideoService svc = EZVizVideoService(envConfig);
     svc.Run();
 

@@ -86,12 +86,12 @@ class AMQPHandler : public AMQP::TcpHandler
      *  active, and you will also receive calls to onLost() and onDetached()
      *  @param  connection      The connection over which the AMQP protocol ended
      */
-    virtual void onClosed(AMQP::TcpConnection *connection) override 
+    virtual void onClosed(AMQP::TcpConnection *connection) override
     {
         // @todo
         //  add your own implementation (probably not necessary, but it could
         //  be useful if you want to do some something immediately after the
-        //  amqp connection is over, but do not want to wait for the tcp 
+        //  amqp connection is over, but do not want to wait for the tcp
         //  connection to shut down
     }
 
@@ -100,7 +100,7 @@ class AMQPHandler : public AMQP::TcpHandler
      *  This method is always called if there was also a call to onConnected()
      *  @param  connection      The connection that was closed and that is now unusable
      */
-    virtual void onLost(AMQP::TcpConnection *connection) override 
+    virtual void onLost(AMQP::TcpConnection *connection) override
     {
         // @todo
         //  add your own implementation (probably not necessary)
@@ -111,11 +111,11 @@ class AMQPHandler : public AMQP::TcpHandler
      *  handler will be made about the connection.
      *  @param  connection      The connection that can be destructed
      */
-    virtual void onDetached(AMQP::TcpConnection *connection) override 
+    virtual void onDetached(AMQP::TcpConnection *connection) override
     {
         // @todo
         //  add your own implementation, like cleanup resources or exit the application
-    } 
+    }
 
     /**
      *  Method that is called by the AMQP-CPP library when it wants to interact
@@ -141,6 +141,5 @@ class AMQPHandler : public AMQP::TcpHandler
         //  connection->process(fd, flags) method.
     }
 };
-
 
 #endif
