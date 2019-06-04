@@ -2,6 +2,7 @@
 #define __MY_RABITMQ_HPP__
 
 #include <uv.h>
+#include <condition_variable>
 #include <amqpcpp.h>
 #include <amqpcpp/libuv.h>
 #include "../json.hpp"
@@ -11,9 +12,9 @@ using namespace std;
 class EZAMQPHandler : public AMQP::LibUvHandler
 {
 private:
-
-    
-    /**
+    condition_variable *cv_network;
+    mutex *cv_network_m;
+  /**
      *  Method that is called when a connection error occurs
      *  @param  connection
      *  @param  message
@@ -31,13 +32,78 @@ private:
     {
         std::cout << "connected" << std::endl;
     }
+
+    virtual uint16_t onNegotiate(AMQP::TcpConnection *connection, uint16_t interval)
+    {
+        interval = 10;
+
+        // @todo
+        //  set a timer in your event loop, and make sure that you call
+        //  connection->heartbeat() every _interval_ seconds if no other
+        //  instruction was sent in that period.
+
+        // return the interval that we want to use
+        return interval;
+    }
+
+    virtual void onAttached(AMQP::TcpConnection *connection)
+    {
+        cout << "onAttached" << endl;
+
+    }
+
+    virtual bool onSecured(AMQP::TcpConnection *connection, const SSL *ssl)
+    {
+        return AMQP::LibUvHandler::onSecured(connection, ssl);
+    }
+
+    virtual void onProperties(AMQP::TcpConnection *connection, const AMQP::Table &server, AMQP::Table &client)
+    {
+        AMQP::LibUvHandler::onProperties(connection, server, client);
+        cout << "onProperties" << endl;
+    }
+
+    virtual void onReady(AMQP::TcpConnection *connection) 
+    {
+        cout << "onReady" << endl;
+    }
+
+    virtual void onClosed(AMQP::TcpConnection *connection) 
+    {
+        cout << "onClosed" << endl;
+    }
+    
+    /**
+     *  Method that is called when the TCP connection is lost or closed. This
+     *  is always called if you have also received a call to onConnected().
+     *  @param  connection  The TCP connection
+     */
+    virtual void onLost(AMQP::TcpConnection *connection) 
+    {
+        cout << "onLost" << endl;
+    }
+
+    /**
+     *  Method that is called when the handler will no longer be notified.
+     *  This is the last call to your handler, and it is typically used
+     *  to clean up stuff.
+     *  @param  connection      The connection that is being destructed
+     */
+    virtual void onDetached(AMQP::TcpConnection *connection)
+    {
+        cout << "onDetached" << endl;
+        cv_network->notify_all();
+    }
     
 public:
     /**
      *  Constructor
      *  @param  uv_loop
      */
-    EZAMQPHandler(uv_loop_t *loop) : AMQP::LibUvHandler(loop) {}
+    EZAMQPHandler(condition_variable *cv_network, mutex *cv_nework_m,uv_loop_t *loop) : AMQP::LibUvHandler(loop) {
+        this->cv_network=cv_network;
+        this->cv_network_m = cv_network_m;
+    }
 
     /**
      *  Destructor

@@ -1,6 +1,6 @@
 /*=============================================================================
 #  Author:           blu (bruce.lu)
-#  Email:            lzbgt@126.com 
+#  Email:            lzbgt@icloud.com 
 #  FileName:         main.cpp
 #  Description:      /
 #  Version:          0.0.1
@@ -11,9 +11,8 @@
 
 int main() {
     //
-    EZVizVideoService svc = EZVizVideoService();
+    EZVizVideoService svc;
     svc.Run();
-    this_thread::sleep_for(200s);
 
     return 0;
 }
