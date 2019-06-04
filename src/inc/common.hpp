@@ -52,7 +52,7 @@ typedef struct EnvConfig {
         this->ezvizNumTcpThreadsMax = 4;
         this->videoDir = "videos";
         //
-        this->amqpConfig.amqpAddr = "amqp://guest:guest@localhost:5672/vhost";
+        this->amqpConfig.amqpAddr = "amqp://guest:guest@172.20.10.6:5672/";
         this->amqpConfig.playbackExchangeName = "ezviz.exchange.default";
         this->amqpConfig.playbackQueName="ezviz.work.queue.playback";
         this->amqpConfig.playbackRouteKey = "";
@@ -61,10 +61,10 @@ typedef struct EnvConfig {
         this->amqpConfig.rtplayQueName="ezviz.work.queue.rtplay";
         this->amqpConfig.rtplayRouteKey = "";
         //
-        this->amqpConfig.rtplayExchangeName = "ezviz.exchange.realtime";
-        this->amqpConfig.rtplayQueName="ezviz.work.queue.rtstop";
-        this->amqpConfig.rtplayRouteKey = myutils::GenerateUUID('.');
-        cout << this->amqpConfig.rtplayRouteKey << endl;
+        this->amqpConfig.rtstopExchangeName = "ezviz.exchange.realtime";
+        this->amqpConfig.rtstopQueName="ezviz.work.queue.rtstop";
+        this->amqpConfig.rtstopRouteKey = myutils::GenerateUUID('.');
+        cout << this->amqpConfig.rtstopRouteKey << endl;
     }
 
     EnvConfig(){

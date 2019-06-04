@@ -13,7 +13,7 @@ int main() {
     //
     EZVizVideoService svc = EZVizVideoService();
     svc.Run();
-    this_thread::sleep_for(20s);
+    this_thread::sleep_for(200s);
 
     return 0;
 }

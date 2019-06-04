@@ -28,7 +28,8 @@ private:
     const int PRIORITY_PLAYBACK = 1;
     const int PRIORITY_RTPLAY = 10;
 
-    AMQPHandler rabbitHandler;
+    uv_loop_t* uvLoop = NULL;
+    EZAMQPHandler *rabbitHandler;
     EnvConfig envConfig = {};
     string ezvizToken;
     AMQP::Address *amqpAddr =NULL;
@@ -55,28 +56,36 @@ private:
     int InitAMQP()
     {
         int ret = 0;
+        cout << "mode: " << this->envConfig.mode << endl;
+        uvLoop = uv_default_loop();
+        this->rabbitHandler = new EZAMQPHandler(this->uvLoop);
         // address of the server
         this->amqpAddr = new AMQP::Address(this->envConfig.amqpConfig.amqpAddr);
+        // create a AMQP connection object
+        this->amqpConn = new AMQP::TcpConnection(this->rabbitHandler, *(this->amqpAddr));
 
         AMQP::TcpChannel *channel = NULL;
 
-        cout << "mode: " << this->envConfig.mode << endl;
-
         // playback
         if(this->envConfig.mode & EZMODE::PLAYBACK) {
-            // create a AMQP connection object
-            this->amqpConn = new AMQP::TcpConnection(&rabbitHandler, *(this->amqpAddr));
-
             // and create a channel
+            cout << "setting up playback channel" << endl;
             this->chanPlayback = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanPlayback;
             // declare playback queue
-            channel->declareExchange(this->envConfig.amqpConfig.playbackExchangeName);
+            channel->declareExchange(this->envConfig.amqpConfig.playbackExchangeName, AMQP::direct).onError([](const char* msg){
+                cout << "error :" << msg << endl;
+            });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
-            channel->declareQueue(this->envConfig.amqpConfig.playbackQueName, AMQP::durable, mqArgs);
+            channel->declareQueue(this->envConfig.amqpConfig.playbackQueName, AMQP::durable, mqArgs).onError([](const char *msg){
+                cout << "error: " << msg << endl;
+            });
             channel->bindQueue(this->envConfig.amqpConfig.playbackExchangeName,
-                            this->envConfig.amqpConfig.playbackQueName, this->envConfig.amqpConfig.playbackRouteKey);
+                            this->envConfig.amqpConfig.playbackQueName, this->envConfig.amqpConfig.playbackRouteKey).onError([](const char * msg){
+                                cout << "error: " << msg << endl;
+                            });
+
         }
         
         // rtplay
@@ -96,7 +105,7 @@ private:
             this->chanRTStop = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTStop;
             // declare playback queue
-            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::ExchangeType::topic);
+            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic);
             channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
                             this->envConfig.amqpConfig.rtstopQueName, this->envConfig.amqpConfig.rtstopRouteKey);
         }
@@ -156,9 +165,20 @@ public:
     // entry
     void Run()
     {
-
+        cout <<"conn: " << this->amqpConn<< endl;
+                AMQP::Channel * chan = this->chanPlayback;
+        chan->startTransaction().onError([](const char* msg){
+            cout << "startTransaction error: " << msg << endl;
+        });
+        chan->publish(this->envConfig.amqpConfig.playbackExchangeName, this->envConfig.amqpConfig.playbackQueName, "hello world!");
+        chan->commitTransaction().onSuccess([]{
+            cout << "commit success" << endl;
+        }).onError([](const char* msg){
+            cout <<"commit error: " << msg <<endl;
+        });
+        uv_run(uvLoop, UV_RUN_DEFAULT);
     }
-
+    
     // dtor
     ~EZVizVideoService()
     {
