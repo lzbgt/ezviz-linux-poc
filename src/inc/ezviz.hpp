@@ -23,16 +23,17 @@
 
 using namespace std;
 
-
-
 class EZVizVideoService {
 private:
     const int PRIORITY_PLAYBACK = 1;
-    const int PRIORITY_RTRECORD = 10;
+    const int PRIORITY_RTPLAY = 10;
 
     AMQPHandler rabbitHandler;
     EnvConfig envConfig = {};
     string ezvizToken;
+    AMQP::Address *amqpAddr =NULL;
+    AMQP::TcpConnection *amqpConn = NULL;
+    AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *_chanRTStop =NULL;
 
 
 private:
@@ -54,23 +55,52 @@ private:
     int InitAMQP()
     {
         int ret = 0;
-        // // address of the server
-        AMQP::Address address(this->envConfig.amqpConfig.amqpAddr);
+        // address of the server
+        this->amqpAddr = new AMQP::Address(this->envConfig.amqpConfig.amqpAddr);
 
-        // create a AMQP connection object
-        AMQP::TcpConnection connection(&rabbitHandler, address);
+        AMQP::TcpChannel *channel = NULL;
 
-        // and create a channel
-        AMQP::TcpChannel channel(&connection);
+        cout << "mode: " << this->envConfig.mode << endl;
 
-        // declare playback queue
-        channel.declareExchange(this->envConfig.amqpConfig.exchangeName);
-        AMQP::Table mqArgs;
-        mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
-        channel.declareQueue(this->envConfig.amqpConfig.queName, AMQP::durable + AMQP::autodelete, mqArgs);
-        channel.bindQueue(this->envConfig.amqpConfig.exchangeName,
-                          this->envConfig.amqpConfig.queName, this->envConfig.amqpConfig.routeKey);
+        // playback
+        if(this->envConfig.mode & EZMODE::PLAYBACK) {
+            // create a AMQP connection object
+            this->amqpConn = new AMQP::TcpConnection(&rabbitHandler, *(this->amqpAddr));
 
+            // and create a channel
+            this->chanPlayback = new AMQP::TcpChannel(this->amqpConn);
+            channel = this->chanPlayback;
+            // declare playback queue
+            channel->declareExchange(this->envConfig.amqpConfig.playbackExchangeName);
+            AMQP::Table mqArgs;
+            mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
+            channel->declareQueue(this->envConfig.amqpConfig.playbackQueName, AMQP::durable, mqArgs);
+            channel->bindQueue(this->envConfig.amqpConfig.playbackExchangeName,
+                            this->envConfig.amqpConfig.playbackQueName, this->envConfig.amqpConfig.playbackRouteKey);
+        }
+        
+        // rtplay
+        if(this->envConfig.mode & EZMODE::RTPLAY) {
+            // create rtplay channle
+            this->chanRTPlay = new AMQP::TcpChannel(this->amqpConn);
+            channel = this->chanRTPlay;
+            // declare playback queue
+            channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName);
+            AMQP::Table mqArgs;
+            mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
+            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete, mqArgs);
+            channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
+                            this->envConfig.amqpConfig.rtplayQueName, this->envConfig.amqpConfig.rtplayRouteKey);
+
+           // create rtstop channle
+            this->chanRTStop = new AMQP::TcpChannel(this->amqpConn);
+            channel = this->chanRTStop;
+            // declare playback queue
+            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::ExchangeType::topic);
+            channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
+                            this->envConfig.amqpConfig.rtstopQueName, this->envConfig.amqpConfig.rtstopRouteKey);
+        }
+        
         return ret;
     }
 
@@ -108,7 +138,7 @@ private:
 
 public:
     // ctor
-    EZVizVideoService(EnvConfig &envConfig)
+    EZVizVideoService()
     {
         // get env:
         //      threads config
@@ -118,7 +148,6 @@ public:
         // init ezviz sdk
         // init rabbitmq conn
         // request token
-        this->envConfig = envConfig;
         this->ezvizToken = ReqEZVizToken(envConfig.appKey, envConfig.appSecret);
         this->InitAMQP();
         this->InitEZViz();
