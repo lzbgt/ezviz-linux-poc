@@ -36,8 +36,6 @@ private:
     AMQP::TcpConnection *amqpConn = NULL;
     AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *_chanRTStop =NULL;
 
-
-private:
     string ReqEZVizToken(string appKey, string appSecret)
     {
         return "";
@@ -161,6 +159,11 @@ public:
         this->InitAMQP();
         this->InitEZViz();
     }
+        // dtor
+    ~EZVizVideoService()
+    {
+        //
+    }
 
     // entry
     void Run()
@@ -177,12 +180,6 @@ public:
             cout <<"commit error: " << msg <<endl;
         });
         uv_run(uvLoop, UV_RUN_DEFAULT);
-    }
-    
-    // dtor
-    ~EZVizVideoService()
-    {
-
     }
 };
 
