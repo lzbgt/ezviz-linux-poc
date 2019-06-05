@@ -112,7 +112,7 @@ private:
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
                     this->envConfig.amqpConfig.rtplayQueName, this->envConfig.amqpConfig.rtplayRouteKey).onError([](const char* msg){
-                        cerr << "error decalre rtstop queue: " << msg <<  endl;
+                        cerr << "error decalre rtplay queue: " << msg <<  endl;
             });
 
             // create rtstop channle
@@ -270,22 +270,23 @@ public:
         };
 
         // callback operation when a message was received
+        auto OnPlaybackMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+            cout << "playback message received: " << (char*)(message.body()) << endl;
+            // acknowledge the message
+            this->chanPlayback->ack(deliveryTag);
+        };
+
+
+        // callback operation when a message was received
         auto OnRTPlayMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            cout << "message received: " << (char*)(message.body()) << endl;
+            cout << "rtplay message received: " << (char*)(message.body()) << endl;
             // acknowledge the message
             this->chanRTPlay->ack(deliveryTag);
         };
 
         // callback operation when a message was received
-        auto OnPlaybackMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            cout << "message received: " << (char*)(message.body()) << endl;
-            // acknowledge the message
-            this->chanPlayback->ack(deliveryTag);
-        };
-
-        // callback operation when a message was received
         auto OnRTStopMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            cout << "message received: " << (char*)(message.body()) << endl;
+            cout << "rtstop message received: " << (char*)(message.body()) << endl;
             // acknowledge the message
             this->chanRTStop->ack(deliveryTag);
         };
@@ -328,7 +329,7 @@ public:
         // check network status and do heartbeating
         while(true) {
             unique_lock<std::mutex> lk_detach(mut_detach);
-            stat = this->cv_detach.wait_for(lk, 7s);
+            stat = this->cv_detach.wait_for(lk_detach, 7s);
             if(cv_status::no_timeout == stat) {
                 cerr << "network issue, resetting..." << endl;
                 _free();
