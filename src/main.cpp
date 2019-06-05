@@ -12,7 +12,10 @@
 int main() {
     //
     EZVizVideoService svc;
-    svc.Run();
+    while(true) {
+        // reconnect network
+        svc.Run();
+    }
 
     return 0;
 }

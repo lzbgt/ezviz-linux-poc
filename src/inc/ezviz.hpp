@@ -29,8 +29,8 @@ class EZVizVideoService {
 private:
     const int PRIORITY_PLAYBACK = 1;
     const int PRIORITY_RTPLAY = 10;
-    condition_variable cv_network;
-    mutex cv_network_m;
+    condition_variable cv_detach, cv_ready;
+    mutex mut_detach, mut_ready;
 
     uv_loop_t* uvLoop = NULL;
     EZAMQPHandler *ezAMQPHandler = NULL;
@@ -58,14 +58,14 @@ private:
     int InitAMQP()
     {
         int ret = 0;
+        cout << "mode: " << this->envConfig.mode << endl;
         if(this->uvLoop != NULL) {
-            cout << "retry ..." << endl;
+            cout << "reconnect ..." << endl;
             delete this->uvLoop;
         }
         this->uvLoop = new uv_loop_t;
         uv_loop_init(this->uvLoop);
-        this->ezAMQPHandler = new EZAMQPHandler(&(this->cv_network), &(this->cv_network_m), this->uvLoop);
-        cout << "mode: " << this->envConfig.mode << endl;
+        this->ezAMQPHandler = new EZAMQPHandler(&(this->cv_ready), &(this->cv_detach), this->uvLoop);
         // address of the server
         this->amqpAddr = new AMQP::Address(this->envConfig.amqpConfig.amqpAddr);
         // create a AMQP connection object
@@ -151,10 +151,52 @@ private:
         return 0;
     }
 
+    /**
+     *
+     * type: 1 - token, 2 - amqp; 4 - ezviz;
+     *
+     */
+    void _init(int type_)
+    {
+        if(type_ & 1) {
+            this->ezvizToken = ReqEZVizToken(envConfig.appKey, envConfig.appSecret);
+        }
+
+        if(type_ & 2) {
+            this->InitAMQP();
+        }
+
+        if(type_ & 4) {
+            this->InitEZViz();
+        }
+
+
+    }
+
+    void _free()
+    {
+        // TODO: release all resources
+        uv_stop(this->uvLoop);
+        uv_loop_close(this->uvLoop);
+        // TODO: ?
+        // ESOpenSDK_Fini();
+        if(chanPlayback != NULL)
+            delete chanPlayback;
+        if(chanRTPlay != NULL)
+            delete chanRTPlay;
+        if(chanRTStop != NULL)
+            delete chanRTStop;
+        if(chanRTStop != NULL)
+            delete chanRTStop;
+        if(amqpConn != NULL)
+            delete amqpConn;
+        if(amqpAddr != NULL) {
+            delete amqpAddr;
+        }
+    }
 public:
     // ctor
-    EZVizVideoService()
-    {
+    EZVizVideoService() {
         // get env:
         //      threads config
         //      dir config
@@ -163,14 +205,12 @@ public:
         // init ezviz sdk
         // init rabbitmq conn
         // request token
-        this->ezvizToken = ReqEZVizToken(envConfig.appKey, envConfig.appSecret);
-        this->InitAMQP();
-        this->InitEZViz();
+        _init(7);
     }
     // dtor
     ~EZVizVideoService()
     {
-        //
+        _free();
     }
 
     // entry
@@ -190,46 +230,60 @@ public:
 
         auto startCb = [](const std::string &consumertag) {
 
-            std::cout << "consume operation started" << std::endl;
+            std::cout << "consume operation started: " << consumertag << std::endl;
         };
 
         // callback function that is called when the consume operation failed
         auto errorCb = [](const char *message) {
-
-            std::cout << "consume operation failed" << std::endl;
+            std::cout << "consume operation failed: " << message << std::endl;
         };
 
         // callback operation when a message was received
         auto messageCb = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-
-            std::cout << "message received" << std::endl;
-
+            std::cout << "message received: " << message.body() <<std::endl;
             // acknowledge the message
             this->chanPlayback->ack(deliveryTag);
         };
-        thread *t = new thread([=, this] {
+        thread *t = new thread([this] {
             uv_run(this->uvLoop, UV_RUN_DEFAULT);
         });
-        while(true) {
-            // start consuming from the queue, and install the callbacks
-            this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
-            .onReceived(messageCb)
-            .onSuccess(startCb)  // callback when consuming successfully
-            .onError(errorCb);   // callback when consuming failed on message
 
-            std::unique_lock<std::mutex> lk(cv_network_m);
-            if(cv_status::timeout == this->cv_network.wait_for(lk, 7s)) {
-                std::cerr << "timeout waiting for network issue, "  << "heartbeating ..." << endl;
-                this->amqpConn->heartbeat();
+        // detach thread
+        if(t->joinable()) {
+            t->detach();
+        }
+
+        // start consuming from the queue, and install the callbacks
+        this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
+        .onReceived(messageCb)
+        .onSuccess(startCb)  // callback when consuming successfully
+        .onError(errorCb);   // callback when consuming failed on message
+
+
+        // check for channel ready
+        std::unique_lock<std::mutex> lk_ready(mut_ready);
+        auto stat = this->cv_ready.wait_for(lk_ready, 7s);
+        if(cv_status::timeout == stat) {
+            std::cerr << "channel not usable, resetting..." << endl;
+            _free();
+            // uv_loop_delete(this->uvLoop);
+            this->_init(7);
+            return;
+        }
+
+        // check network status and do heartbeating
+        while(true) {
+            std::unique_lock<std::mutex> lk(mut_detach);
+            stat = this->cv_detach.wait_for(lk, 7s);
+            if(cv_status::no_timeout == stat) {
+                std::cerr << "network issue, resetting..." << endl;
+                _free();
+                // uv_loop_delete(this->uvLoop);
+                this->_init(7);
+                break;
             }
-            else {
-                std::cerr << "no timeout: network issue indeed occured, resetting..." << endl;
-                this->InitAMQP();
-                // delete t;
-                t = new thread([=, this] {
-                    uv_run(this->uvLoop, UV_RUN_DEFAULT);
-                });
-            }
+            std::cerr << "heartbeating ..." << endl;
+            this->amqpConn->heartbeat();
         }
     }
 };

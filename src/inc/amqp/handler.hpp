@@ -12,8 +12,7 @@ using namespace std;
 class EZAMQPHandler : public AMQP::LibUvHandler
 {
 private:
-    condition_variable *cv_network;
-    mutex *cv_network_m;
+    condition_variable *cv_detach, *cv_ready;
   /**
      *  Method that is called when a connection error occurs
      *  @param  connection
@@ -66,6 +65,7 @@ private:
     virtual void onReady(AMQP::TcpConnection *connection) 
     {
         cout << "onReady" << endl;
+        cv_ready->notify_all();
     }
 
     virtual void onClosed(AMQP::TcpConnection *connection) 
@@ -92,7 +92,7 @@ private:
     virtual void onDetached(AMQP::TcpConnection *connection)
     {
         cout << "onDetached" << endl;
-        cv_network->notify_all();
+        cv_detach->notify_all();
     }
     
 public:
@@ -100,9 +100,9 @@ public:
      *  Constructor
      *  @param  uv_loop
      */
-    EZAMQPHandler(condition_variable *cv_network, mutex *cv_nework_m,uv_loop_t *loop) : AMQP::LibUvHandler(loop) {
-        this->cv_network=cv_network;
-        this->cv_network_m = cv_network_m;
+    EZAMQPHandler(condition_variable *cv_ready, condition_variable *cv_detach,uv_loop_t *loop) : AMQP::LibUvHandler(loop) {
+        this->cv_ready=cv_ready;
+        this->cv_detach = cv_detach;
     }
 
     /**
