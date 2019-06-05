@@ -102,18 +102,29 @@ private:
             this->chanRTPlay = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTPlay;
             // declare playback queue
-            channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName);
+            channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName, AMQP::direct).onError([](const char*msg){
+                cerr << "error declare rtplay exchange: " << msg << endl;
+            });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
-            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete, mqArgs);
+            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete, mqArgs).onError([](const char*msg){
+                cerr << "error declare rtplay exchange: " << msg << endl;
+            });
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
-                               this->envConfig.amqpConfig.rtplayQueName, this->envConfig.amqpConfig.rtplayRouteKey);
+                    this->envConfig.amqpConfig.rtplayQueName, this->envConfig.amqpConfig.rtplayRouteKey).onError([](const char* msg){
+                        cerr << "error decalre rtstop queue: " << msg <<  endl;
+            });
 
             // create rtstop channle
             this->chanRTStop = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTStop;
+            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic).onError([](const char*msg){
+                cerr << "error declare rtstop exchange: " << msg << endl;
+            });
             // declare playback queue
-            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic);
+            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete).onError([](const char*msg){
+                cerr << "error declare rtstop queue: " << msg << endl;
+            });
             channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
                                this->envConfig.amqpConfig.rtstopQueName, this->envConfig.amqpConfig.rtstopRouteKey);
         }
@@ -259,37 +270,43 @@ public:
         };
 
         // callback operation when a message was received
-        auto OnChanMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+        auto OnRTPlayMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
             cout << "message received: " << (char*)(message.body()) << endl;
-            switch(this->envConfig.mode) {
-                case EZMODE::PLAYBACK:{
-                    break;
-                }
-                case EZMODE::RTPLAY: {
-                    break;
-                }
-            }
+            // acknowledge the message
+            this->chanRTPlay->ack(deliveryTag);
+        };
+
+        // callback operation when a message was received
+        auto OnPlaybackMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+            cout << "message received: " << (char*)(message.body()) << endl;
             // acknowledge the message
             this->chanPlayback->ack(deliveryTag);
+        };
+
+        // callback operation when a message was received
+        auto OnRTStopMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+            cout << "message received: " << (char*)(message.body()) << endl;
+            // acknowledge the message
+            this->chanRTStop->ack(deliveryTag);
         };
 
         // check run mode
         if(this->envConfig.mode == EZMODE::PLAYBACK) {
             // start consuming from the queue, and install the callbacks
             this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
-            .onReceived(OnChanMessage)
+            .onReceived(OnPlaybackMessage)
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
             .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
         }else if(this->envConfig.mode == EZMODE::RTPLAY) {
             // play queue
             this->chanRTPlay->consume(this->envConfig.amqpConfig.rtplayQueName)
-            .onReceived(OnChanMessage)
+            .onReceived(OnRTPlayMessage)
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
             .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
 
             // stop queue
             this->chanRTStop->consume(this->envConfig.amqpConfig.rtstopQueName)
-            .onReceived(OnChanMessage)
+            .onReceived(OnRTStopMessage)
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
             .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
         }else{
