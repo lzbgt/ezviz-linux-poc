@@ -107,7 +107,7 @@ private:
             });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
-            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete, mqArgs).onError([](const char*msg){
+            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::autodelete), mqArgs).onError([](const char*msg){
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
@@ -122,7 +122,7 @@ private:
                 cerr << "error declare rtstop exchange: " << msg << endl;
             });
             // declare playback queue
-            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete).onError([](const char*msg){
+            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete & (~AMQP::autodelete)).onError([](const char*msg){
                 cerr << "error declare rtstop queue: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
