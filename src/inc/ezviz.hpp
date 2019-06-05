@@ -327,7 +327,7 @@ public:
 
         // check network status and do heartbeating
         while(true) {
-            unique_lock<std::mutex> lk(mut_detach);
+            unique_lock<std::mutex> lk_detach(mut_detach);
             stat = this->cv_detach.wait_for(lk, 7s);
             if(cv_status::no_timeout == stat) {
                 cerr << "network issue, resetting..." << endl;
