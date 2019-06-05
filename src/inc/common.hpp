@@ -43,6 +43,7 @@ typedef struct EnvConfig {
     string appSecret; /* EZ_APPSECRET */
     string videoDir; /* EZ_VIDEO_DIR */
     EZAMPQConfig amqpConfig; /* EZ_AMQP_ADDR, EZ_AMQP_EXCH, EZ_AMQP_QUEUE, EZ_AMQP_ROUTE */
+    int numConcurrentDevs;
     int ezvizNumTcpThreadsMax; /* EZ_NUM_TCPTHREADS */
     int ezvizNumSslThreadsMax; /* EZ_NUM_SSLTHREADS */
 
@@ -51,6 +52,7 @@ typedef struct EnvConfig {
         this->ezvizNumSslThreadsMax = 4;
         this->ezvizNumTcpThreadsMax = 4;
         this->videoDir = "videos";
+        this->numConcurrentDevs = 4;
         //
         this->amqpConfig.amqpAddr = "amqp://guest:guest@172.20.10.6:5672/";
         this->amqpConfig.playbackExchangeName = "ezviz.exchange.default";
@@ -92,6 +94,11 @@ typedef struct EnvConfig {
         if(envStr = getenv("EZ_VIDEO_DIR")){
             this->videoDir = string(envStr);
         }
+
+        if(envStr = getenv("EZ_BATCH_SIZE")){
+            this->numConcurrentDevs = stoi(string(envStr));
+        }
+
         if(envStr = getenv("EZ_AMQP_ADDR")){
             this->amqpConfig.amqpAddr = string(envStr);
         }

@@ -183,8 +183,6 @@ private:
         if(type_ & 4) {
             this->InitEZViz();
         }
-
-
     }
 
     void _free()
@@ -279,6 +277,11 @@ public:
             // acknowledge the message
             cout << "OnPlaybckMessage: " << msg << endl;
             this->chanPlayback->ack(deliveryTag);
+
+            // build ezviz download task
+            // send to ezviz downloader
+            
+            delete msg;
         };
 
 

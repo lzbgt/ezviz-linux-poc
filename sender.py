@@ -6,7 +6,7 @@ import sys
 
 # ./ezviz records get 1 2019-05-30\ 00:00:00 2019-05-30\ 09:00:00 C90674290 WGXWZT a287e05ace374c3587e051db8cd4be82 at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f
 connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='172.20.10.6'))
+    pika.ConnectionParameters(host='192.168.0.110'))
 channel = connection.channel()
 
 args = {"x-max-priority": 1}
