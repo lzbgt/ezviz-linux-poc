@@ -101,12 +101,13 @@ private:
             // create rtplay channle
             this->chanRTPlay = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTPlay;
-            // declare playback queue
+            // declare rtplay queue
             channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName, AMQP::direct).onError([](const char*msg){
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
+            mqArgs["x-expires"] = 10 * 1000; // 10s
             channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::autodelete), mqArgs).onError([](const char*msg){
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
@@ -271,8 +272,12 @@ public:
 
         // callback operation when a message was received
         auto OnPlaybackMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            cout << "playback message received: " << (char*)(message.body()) << endl;
+            size_t len = message.bodySize();
+            char *msg = new char[len+1];
+            msg[len] = 0;
+            memcpy(msg, message.body(), len);
             // acknowledge the message
+            cout << "OnPlaybckMessage: " << msg << endl;
             this->chanPlayback->ack(deliveryTag);
         };
 

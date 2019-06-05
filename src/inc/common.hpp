@@ -55,11 +55,11 @@ typedef struct EnvConfig {
         this->amqpConfig.amqpAddr = "amqp://guest:guest@172.20.10.6:5672/";
         this->amqpConfig.playbackExchangeName = "ezviz.exchange.default";
         this->amqpConfig.playbackQueName="ezviz.work.queue.playback";
-        this->amqpConfig.playbackRouteKey = "";
+        this->amqpConfig.playbackRouteKey = "playback";
         //
         this->amqpConfig.rtplayExchangeName = "ezviz.exchange.default";
         this->amqpConfig.rtplayQueName="ezviz.work.queue.rtplay";
-        this->amqpConfig.rtplayRouteKey = "";
+        this->amqpConfig.rtplayRouteKey = "rtplay";
         //
         this->amqpConfig.rtstopExchangeName = "ezviz.exchange.realtime";
         this->amqpConfig.rtstopQueName="ezviz.work.queue.rtstop";
