@@ -13,6 +13,7 @@ class EZAMQPHandler : public AMQP::LibUvHandler
 {
 private:
     condition_variable *cv_detach, *cv_ready;
+    int interval = 11;
   /**
      *  Method that is called when a connection error occurs
      *  @param  connection
@@ -34,7 +35,7 @@ private:
 
     virtual uint16_t onNegotiate(AMQP::TcpConnection *connection, uint16_t interval)
     {
-        interval = 10;
+        interval = this->interval;
 
         // @todo
         //  set a timer in your event loop, and make sure that you call

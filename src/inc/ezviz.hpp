@@ -29,6 +29,8 @@ class EZVizVideoService {
 private:
     const int PRIORITY_PLAYBACK = 1;
     const int PRIORITY_RTPLAY = 10;
+
+    unsigned long long runCount = 0;
     condition_variable cv_detach, cv_ready;
     mutex mut_detach, mut_ready;
 
@@ -60,7 +62,7 @@ private:
         int ret = 0;
         cout << "mode: " << this->envConfig.mode << endl;
         if(this->uvLoop != NULL) {
-            cout << "reconnect ..." << endl;
+            cerr << "reconnect ..." << endl;
             delete this->uvLoop;
         }
         this->uvLoop = new uv_loop_t;
@@ -81,16 +83,16 @@ private:
             channel = this->chanPlayback;
             // declare playback queue
             channel->declareExchange(this->envConfig.amqpConfig.playbackExchangeName, AMQP::direct).onError([](const char* msg) {
-                cout << "error :" << msg << endl;
+                cerr << "error :" << msg << endl;
             });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
             channel->declareQueue(this->envConfig.amqpConfig.playbackQueName, AMQP::durable, mqArgs).onError([](const char *msg) {
-                cout << "error: " << msg << endl;
+                cerr << "error: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.playbackExchangeName,
             this->envConfig.amqpConfig.playbackQueName, this->envConfig.amqpConfig.playbackRouteKey).onError([](const char * msg) {
-                cout << "error: " << msg << endl;
+                cerr << "error: " << msg << endl;
             });
         }
 
@@ -216,7 +218,17 @@ public:
     // entry
     void Run()
     {
-        cout <<"conn: " << this->amqpConn << endl;
+        // reconnect on network issue
+        cout <<"runCount: " << this->runCount << endl;
+        if(runCount > 0) {
+            this->_init(7);
+            runCount++;
+            if(runCount == 0) {
+                runCount = 1;
+            }
+        }
+
+        
         // AMQP::Channel * chan = this->chanPlayback;
         // chan->startTransaction().onError([](const char* msg){
         //     cout << "startTransaction error: " << msg << endl;
@@ -228,22 +240,6 @@ public:
         //     cout <<"commit error: " << msg <<endl;
         // });
 
-        auto startCb = [](const std::string &consumertag) {
-
-            std::cout << "consume operation started: " << consumertag << std::endl;
-        };
-
-        // callback function that is called when the consume operation failed
-        auto errorCb = [](const char *message) {
-            std::cout << "consume operation failed: " << message << std::endl;
-        };
-
-        // callback operation when a message was received
-        auto messageCb = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            std::cout << "message received: " << message.body() <<std::endl;
-            // acknowledge the message
-            this->chanPlayback->ack(deliveryTag);
-        };
         thread *t = new thread([this] {
             uv_run(this->uvLoop, UV_RUN_DEFAULT);
         });
@@ -253,36 +249,75 @@ public:
             t->detach();
         }
 
-        // start consuming from the queue, and install the callbacks
-        this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
-        .onReceived(messageCb)
-        .onSuccess(startCb)  // callback when consuming successfully
-        .onError(errorCb);   // callback when consuming failed on message
+        auto OnChanOperationStart = [](const string &consumertag) {
+            // cout << "consume operation started: " << consumertag << std::endl;
+        };
 
+        // callback function that is called when the consume operation failed
+        auto OnChanOperationFailed = [](string message) {
+            cout << "consume operation failed: " << message << std::endl;
+        };
+
+        // callback operation when a message was received
+        auto OnChanMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+            cout << "message received: " << (char*)(message.body()) << endl;
+            switch(this->envConfig.mode) {
+                case EZMODE::PLAYBACK:{
+                    break;
+                }
+                case EZMODE::RTPLAY: {
+                    break;
+                }
+            }
+            // acknowledge the message
+            this->chanPlayback->ack(deliveryTag);
+        };
+
+        // check run mode
+        if(this->envConfig.mode == EZMODE::PLAYBACK) {
+            // start consuming from the queue, and install the callbacks
+            this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
+            .onReceived(OnChanMessage)
+            .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
+            .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
+        }else if(this->envConfig.mode == EZMODE::RTPLAY) {
+            // play queue
+            this->chanRTPlay->consume(this->envConfig.amqpConfig.rtplayQueName)
+            .onReceived(OnChanMessage)
+            .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
+            .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
+
+            // stop queue
+            this->chanRTStop->consume(this->envConfig.amqpConfig.rtstopQueName)
+            .onReceived(OnChanMessage)
+            .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
+            .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
+        }else{
+            //
+            cerr << "invalid run mode, exiting ..." << endl;
+            exit(1);
+        }
 
         // check for channel ready
         std::unique_lock<std::mutex> lk_ready(mut_ready);
         auto stat = this->cv_ready.wait_for(lk_ready, 7s);
         if(cv_status::timeout == stat) {
-            std::cerr << "channel not usable, resetting..." << endl;
+            cerr << "channel not usable, resetting..." << endl;
             _free();
-            // uv_loop_delete(this->uvLoop);
             this->_init(7);
             return;
         }
 
         // check network status and do heartbeating
         while(true) {
-            std::unique_lock<std::mutex> lk(mut_detach);
+            unique_lock<std::mutex> lk(mut_detach);
             stat = this->cv_detach.wait_for(lk, 7s);
             if(cv_status::no_timeout == stat) {
-                std::cerr << "network issue, resetting..." << endl;
+                cerr << "network issue, resetting..." << endl;
                 _free();
-                // uv_loop_delete(this->uvLoop);
-                this->_init(7);
                 break;
             }
-            std::cerr << "heartbeating ..." << endl;
+            // cout << "heartbeating ..." << endl;
             this->amqpConn->heartbeat();
         }
     }
