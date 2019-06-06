@@ -97,7 +97,7 @@ private:
                 cerr << "error :" << msg << endl;
             });
             AMQP::Table mqArgs;
-            mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
+            // mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
             channel->declareQueue(this->envConfig.amqpConfig.playbackQueName, AMQP::durable, mqArgs).onError([](const char *msg) {
                 cerr << "error: " << msg << endl;
             });
@@ -117,7 +117,7 @@ private:
             //     cerr << "error declare rtplay exchange: " << msg << endl;
             // });
             AMQP::Table mqArgs;
-            mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
+            // mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
             // mqArgs["x-expires"] = 10 * 1000; // 10s
             channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::durable), mqArgs).onError([](const char*msg) {
                 cerr << "error declare rtplay exchange: " << msg << endl;
@@ -275,6 +275,7 @@ private:
                                 cbd.fout->flush();
                                 cbd.fout->close();
                                 delete cbd.fout;
+                                this->numRTPlayRunning--;
                             }
                         }
                     }
