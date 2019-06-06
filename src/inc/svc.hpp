@@ -187,7 +187,7 @@ private:
     void BootStrapDownloader(thread *threads, int num)
     {
         // create download threads, and loop over tasks for ever
-        for(int i = 0; i < 4; i++) {
+        for(int i = 0; i < num; i++) {
             threads[i] = thread([this] {
                 while (this->jobs.size() > 0)
                 {
@@ -285,10 +285,10 @@ private:
                                 cbd.fout->close();
 
                                 delete cbd.fout;
-                                this->numRTPlayRunning--;
                                 this->statRTPlay.erase(devSn);
                                 //TODO:
                                 RedisDelete(devSn + "." + uuid + ".routekey");
+                                this->numRTPlayRunning--;
                                 break;
                             }
                             this_thread::sleep_for(100ms);
@@ -442,6 +442,7 @@ public:
             cout << "OnPlaybckMessage: " << msg << endl;
             this->chanPlayback->ack(deliveryTag);
 
+            // TOOD:
             // build ezviz download task
             // send to ezviz downloader
 
@@ -528,6 +529,9 @@ public:
                         string res = RedisPut(devSn + "." + uuid + ".routekey",  this->envConfig.amqpConfig.rtstopRouteKey);
                         this->statRTPlay[devSn] = EZCMD::RTPLAY;
                         this->numRTPlayRunning++;
+                        if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
+
+                        }
                     }
                 }else{
                     // has capturing instance
@@ -597,14 +601,21 @@ public:
             return;
         }
 
-        int concurrent = 4;
-        thread *threads = new thread[concurrent];
-        if(this->envConfig.mode == EZMODE::PLAYBACK) {
-            BootStrapDownloader(threads, concurrent);
-        }
-        
-        if(this->envConfig.mode == EZMODE::RTPLAY) {
-            BootStrapRTPlay(threads, concurrent);
+        // thread worker
+
+        thread worker = thread([](){
+            int concurrent = 4;
+            thread *threads = new thread[concurrent];
+            // if(this->envConfig.mode == EZMODE::PLAYBACK) {
+            //     BootStrapDownloader(threads, concurrent);
+            // }
+            
+            if(this->envConfig.mode == EZMODE::RTPLAY) {
+                BootStrapRTPlay(threads, concurrent);
+            }
+        });
+        if(worker.joinable()) {
+            worker.detach();
         }
 
         // check network status and do heartbeating
