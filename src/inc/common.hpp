@@ -33,8 +33,11 @@ typedef enum EZMODE {
     NONE,
     PLAYBACK,
     RTPLAY,
+    RTSTOP,
     ALL
 } EZMODE;
+
+typedef EZMODE EZCMD;
 
 typedef struct EnvConfig {
     public:
@@ -55,15 +58,15 @@ typedef struct EnvConfig {
         this->numConcurrentDevs = 4;
         //
         this->amqpConfig.amqpAddr = "amqp://guest:guest@172.20.10.6:5672/";
-        this->amqpConfig.playbackExchangeName = "ezviz.exchange.default";
+        this->amqpConfig.playbackExchangeName = "ezviz.exchange.playback";
         this->amqpConfig.playbackQueName="ezviz.work.queue.playback";
         this->amqpConfig.playbackRouteKey = "playback";
         //
-        this->amqpConfig.rtplayExchangeName = "ezviz.exchange.default";
+        this->amqpConfig.rtplayExchangeName = "ezviz.exchange.rtplay";
         this->amqpConfig.rtplayQueName="ezviz.work.queue.rtplay";
         this->amqpConfig.rtplayRouteKey = "rtplay";
         //
-        this->amqpConfig.rtstopExchangeName = "ezviz.exchange.realtime";
+        this->amqpConfig.rtstopExchangeName = "ezviz.exchange.rtstop";
         this->amqpConfig.rtstopQueName="ezviz.work.queue.rtstop";
         this->amqpConfig.rtstopRouteKey = myutils::GenerateUUID('.');
         cout << this->amqpConfig.rtstopRouteKey << endl;

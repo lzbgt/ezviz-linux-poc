@@ -17,6 +17,8 @@
 #include "common.hpp"
 // TODO: #include glog
 
+using json = nlohmann::json;
+
 #define OPENADDR "https://open.ys7.com"
 #define ENV_VIDEO_DIR "YS_VIDEO_DIR"
 #define DEFAULT_VIDEO_DIR "videos"
@@ -38,6 +40,7 @@ private:
 
     safe_vector<EZJobDetail> jobs;
     safe_vector<ST_ES_DEVICE_INFO> jobsRTPlay;
+    json statRTPlay;
 
     atomic<int> numRTPlayRunning = 0;
 
@@ -110,13 +113,13 @@ private:
             this->chanRTPlay = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTPlay;
             // declare rtplay queue
-            channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName, AMQP::direct).onError([](const char*msg) {
-                cerr << "error declare rtplay exchange: " << msg << endl;
-            });
+            // channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName, AMQP::direct, AMQP::durable + AMQP::autodelete).onError([](const char*msg) {
+            //     cerr << "error declare rtplay exchange: " << msg << endl;
+            // });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
             mqArgs["x-expires"] = 10 * 1000; // 10s
-            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::autodelete), mqArgs).onError([](const char*msg) {
+            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::durable), mqArgs).onError([](const char*msg) {
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
@@ -127,11 +130,11 @@ private:
             // create rtstop channle
             this->chanRTStop = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTStop;
-            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic).onError([](const char*msg) {
-                cerr << "error declare rtstop exchange: " << msg << endl;
-            });
+            // channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic, AMQP::durable + AMQP::autodelete).onError([](const char*msg) {
+            //     cerr << "error declare rtstop exchange: " << msg << endl;
+            // });
             // declare playback queue
-            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete & (~AMQP::autodelete)).onError([](const char*msg) {
+            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete & (~AMQP::durable)).onError([](const char*msg) {
                 cerr << "error declare rtstop queue: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
@@ -297,14 +300,39 @@ private:
                         cbd.fout = NULL;
                         cbd.stat = 1;
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev, scb, handle);
+                        // wait for stop cmd or timeout
+                        while(true) {
+
+                        }
                     }
                     else {
                         //snap for new job
-                        this_thread::sleep_until
+                        this_thread::sleep_for(100ms);
                     }
                 }
             });
         }
+    }
+    //
+    void SendAMQPMsg(AMQP::TcpChannel *ch, string &exchange, string &routekey, const char *msg) {
+        AMQP::Channel * chan = ch;
+        chan->startTransaction().onError([](const char* msg){
+            cout << "startTransaction error: " << msg << endl;
+        });
+        chan->publish(exchange, routekey, msg);
+        chan->commitTransaction().onSuccess([]{
+            cout << "commit success" << endl;
+        }).onError([](const char* msg){
+            cout <<"commit error: " << msg <<endl;
+        });
+    }
+
+    string RedisGet(string key) {
+        return "";
+    }
+
+    string RedisPut(string key, string value) {
+        return "";
     }
 
     /**
@@ -381,17 +409,6 @@ public:
             }
         }
 
-        // AMQP::Channel * chan = this->chanPlayback;
-        // chan->startTransaction().onError([](const char* msg){
-        //     cout << "startTransaction error: " << msg << endl;
-        // });
-        // chan->publish(this->envConfig.amqpConfig.playbackExchangeName, this->envConfig.amqpConfig.playbackQueName, "hello world!");
-        // chan->commitTransaction().onSuccess([]{
-        //     cout << "commit success" << endl;
-        // }).onError([](const char* msg){
-        //     cout <<"commit error: " << msg <<endl;
-        // });
-
         thread *t = new thread([this] {
             uv_run(this->uvLoop, UV_RUN_DEFAULT);
         });
@@ -429,8 +446,97 @@ public:
 
         // callback operation when a message was received
         auto OnRTPlayMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            cout << "rtplay message received: " << (char*)(message.body()) << endl;
+            size_t len = message.bodySize();
+            char *msg = new char[len+1];
+            msg[len] = 0;
+            memcpy(msg, message.body(), len);
             // acknowledge the message
+            cout << "OnRTPlayMessage: " << msg << endl;
+
+            // parse
+            ST_ES_DEVICE_INFO dev = {};
+            bool valid = true;
+            json devJson = json::parse(msg);
+
+            EZCMD ezCmd = EZCMD::NONE;
+            string cmd, devSn, devCode, uuid;
+            int chanId = 1;
+            if(devJson.contains("cmd")) {
+                cmd = devJson["cmd"].get<string>();
+                if(cmd == "rtplay" ) {
+                    ezCmd = EZCMD::RTPLAY;
+                }else if(cmd == "rtstop") {
+                    ezCmd = EZCMD::RTSTOP;
+                }
+            }
+
+            if(devJson.contains("devSn")) {
+                devSn = devJson["devSn"].get<string>();
+                strncpy(dev.szDevSerial, devSn.c_str(), sizeof(dev.szDevSerial));
+            }else{
+                ezCmd = EZCMD::NONE;
+            }
+
+            if(devJson.contains("devCode")) {
+                devCode = devJson["devcode"].get<string>();
+                strncpy(dev.szSafeKey, devCode.c_str(), sizeof(dev.szSafeKey));
+            }else{
+                ezCmd= EZCMD::NONE;
+            }
+
+            if(devJson.contains("chanId")) {
+                chanId = devJson["chanId"].get<int>();
+                dev.iDevChannelNo = chanId;
+            }else{
+                ezCmd = EZCMD::NONE;
+            }
+
+            if(devJson.contains("uuid")) {
+                uuid = devJson["uuid"].get<string>();
+                if(uuid.empty()) {
+                    ezCmd = EZCMD::NONE;
+                }
+            }else{
+                ezCmd = EZCMD::NONE;
+            }
+
+            if(EZCMD::NONE == ezCmd) {
+                cerr << "invalid messge: " << msg << endl;
+            }else{
+                // query redis 
+                string routekey = RedisGet(devSn + "." + uuid + ".routekey");
+                if(routekey.empty()) {
+                    // new capture
+                    if(ezCmd == EZCMD::RTSTOP) {
+                        // wrong cmd
+                        cerr << "no running instance to stop: " << msg << endl;
+                    }else{
+                        this->jobsRTPlay.push_back(dev);
+                        string res = RedisPut(devSn + "." + uuid + ".routekey",  this->envConfig.amqpConfig.rtstopRouteKey);
+                        this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                        this->numRTPlayRunning++;
+                    }
+                }else{
+                    // has capturing instance
+                    if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) { // on this instance
+                        if(ezCmd == EZCMD::RTPLAY){
+                            // requeue to other instances
+                            cerr << "already capturing on this instance, requeue to other instance: " << msg << endl;
+                            this->chanRTPlay->reject(deliveryTag);
+                            return;
+                        }else{
+                            // RTSTOP
+                            this->statRTPlay[devSn] = EZCMD::RTSTOP;
+                        }
+                    }else{
+                        // on other instance
+                        // reroute to its instance
+                        SendAMQPMsg(this->chanRTStop,this->envConfig.amqpConfig.rtstopExchangeName,routekey, msg);
+                    }
+                }
+            }
+
+            // default ACK
             this->chanRTPlay->ack(deliveryTag);
         };
 
