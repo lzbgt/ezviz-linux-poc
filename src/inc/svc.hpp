@@ -118,7 +118,7 @@ private:
             // });
             AMQP::Table mqArgs;
             mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
-            mqArgs["x-expires"] = 10 * 1000; // 10s
+            // mqArgs["x-expires"] = 10 * 1000; // 10s
             channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::durable), mqArgs).onError([](const char*msg) {
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
@@ -142,38 +142,6 @@ private:
         }
 
         return ret;
-    }
-
-    int EZVizMsgCb(HANDLE pHandle, int code, int eventType, void *pUser)
-    {
-        cout << "=====> msg h: " << pHandle << " code: " << code << " evt: " << eventType << " pd: " << pUser << endl;
-        EZCallBackUserData *cbd = (EZCallBackUserData *)pUser;
-
-        if (code == ES_STREAM_CLIENT_RET_OVER || eventType != ES_STREAM_EVENT::ES_NET_EVENT_CONNECTED) {
-            if (cbd != NULL) {
-                cbd->stat = 0;
-            }
-        }
-
-        return 0;
-    }
-
-    int EZVizDataCb(HANDLE pHandle, unsigned int dataType, unsigned char *buf, unsigned int buflen, void *pUser)
-    {
-        EZCallBackUserData *cbd = (EZCallBackUserData *)pUser;
-        if (ES_STREAM_TYPE::ES_STREAM_DATA == dataType) {
-            // force sequential writing when multi-threading in EZVizSDK (normal case)
-            cbd->m.lock();
-            cbd->fout->write(reinterpret_cast<const char *>(buf), buflen);
-            cbd->m.unlock();
-        }
-        else if (ES_STREAM_TYPE::ES_STREAM_END == dataType) {
-            if (cbd != NULL) {
-                cbd->stat = 0;
-            }
-        }
-
-        return 0;
     }
 
     void DownloadOneFile(ST_ES_DEVICE_INFO &dev, ST_ES_RECORD_INFO &di, string appKey, string token)
@@ -254,7 +222,6 @@ private:
                     cbd->stat = 0;
                 }
             }
-
             return 0;
         };
 
@@ -273,7 +240,6 @@ private:
                     cbd->stat = 0;
                 }
             }
-
             return 0;
         };
 
@@ -286,6 +252,7 @@ private:
                         auto dev = this->jobsRTPlay.pop_back();
                         int ret = 0;
                         char tmStr[15] = {0};
+                        string devSn= dev.szDevSerial;
                         string filename = this->envConfig.videoDir + "/";
                         time_t currTime = time(NULL);
                         tm *now = localtime(&currTime);
@@ -302,7 +269,13 @@ private:
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev, scb, handle);
                         // wait for stop cmd or timeout
                         while(true) {
-
+                            // stop
+                            if(cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP){
+                                ESOpenSDK_StopPlayBack(handle);
+                                cbd.fout->flush();
+                                cbd.fout->close();
+                                delete cbd.fout;
+                            }
                         }
                     }
                     else {
@@ -328,7 +301,7 @@ private:
     }
 
     string RedisGet(string key) {
-        return "";
+        return this->envConfig.amqpConfig.rtstopRouteKey;
     }
 
     string RedisPut(string key, string value) {
@@ -589,7 +562,8 @@ public:
         if(this->envConfig.mode == EZMODE::PLAYBACK) {
             BootStrapDownloader(threads, concurrent);
         }
-        else if(this->envConfig.mode == EZMODE::RTPLAY) {
+        
+        if(this->envConfig.mode == EZMODE::RTPLAY) {
             BootStrapRTPlay(threads, concurrent);
         }
 
