@@ -12,12 +12,16 @@
 #include <chrono>
 #include <ESOpenStream.h>
 #include <atomic>
+#include <filesystem>
+#include <sstream>
 #include "amqp/handler.hpp"
 #include "json.hpp"
 #include "common.hpp"
 // TODO: #include glog
 
 using json = nlohmann::json;
+namespace fs = std::filesystem;
+using namespace std;
 
 #define OPENADDR "https://open.ys7.com"
 #define ENV_VIDEO_DIR "YS_VIDEO_DIR"
@@ -48,14 +52,14 @@ private:
     uv_loop_t* uvLoop = NULL;
     EZAMQPHandler *ezAMQPHandler = NULL;
     EnvConfig envConfig = {};
-    string ezvizToken;
+    string ezvizToken = "at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f";
     AMQP::Address *amqpAddr =NULL;
     AMQP::TcpConnection *amqpConn = NULL;
     AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *_chanRTStop =NULL;
 
     string ReqEZVizToken(string appKey, string appSecret)
     {
-        return "";
+        return "at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f";
     }
 
     int InitEZViz()
@@ -119,7 +123,7 @@ private:
             AMQP::Table mqArgs;
             // mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
             // mqArgs["x-expires"] = 10 * 1000; // 10s
-            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, AMQP::autodelete & (~AMQP::durable), mqArgs).onError([](const char*msg) {
+            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, (~AMQP::autodelete) & (~AMQP::durable), mqArgs).onError([](const char*msg) {
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
@@ -134,7 +138,7 @@ private:
             //     cerr << "error declare rtstop exchange: " << msg << endl;
             // });
             // declare playback queue
-            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete & (~AMQP::durable)).onError([](const char*msg) {
+            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, (~AMQP::autodelete) & (~AMQP::durable)).onError([](const char*msg) {
                 cerr << "error declare rtstop queue: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
@@ -227,6 +231,7 @@ private:
 
         auto ezvizDataCb = [](HANDLE pHandle, unsigned int dataType, unsigned char *buf, unsigned int buflen, void *pUser) ->int {
             EZCallBackUserData *cbd = (EZCallBackUserData *)pUser;
+            cout << "=====> msg h: " << pHandle << " datatype: " << dataType << " pd: " << pUser << endl;
             if (ES_STREAM_TYPE::ES_STREAM_DATA == dataType)
             {
                 // force sequential writing when multi-threading in EZVizSDK (normal case)
@@ -247,6 +252,9 @@ private:
         for(int i = 0; i < num; i++) {
             threads[i] = thread([this, ezvizMsgCb, ezvizDataCb]() {
                 // loop infinitely for rtplay job
+                EZCallBackUserData cbd;
+                cbd.stat = 1;
+                ES_STREAM_CALLBACK scb = {ezvizMsgCb, ezvizDataCb, (void *)&cbd};
                 while(true) {
                     if(this->jobsRTPlay.size() > 0) {
                         auto dev = this->jobsRTPlay.pop_back();
@@ -261,11 +269,12 @@ private:
                         ofstream *fout = new ofstream();
                         fout->open(filename, ios_base::binary | ios_base::trunc);
                         cout << "filename: " << filename << endl;
-                        EZCallBackUserData cbd;
-                        ES_STREAM_CALLBACK scb = {ezvizMsgCb, ezvizDataCb, (void *)&cbd};
+                        cbd.fout = fout;
+
+                        cout << "params: " << this->ezvizToken << ", dev:" << dev.szDevSerial << ", " << dev.szSafeKey
+                        << ", " << dev.iDevChannelNo << endl;
+
                         HANDLE handle = NULL;
-                        cbd.fout = NULL;
-                        cbd.stat = 1;
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev, scb, handle);
                         // wait for stop cmd or timeout
                         while(true) {
@@ -274,9 +283,15 @@ private:
                                 ESOpenSDK_StopPlayBack(handle);
                                 cbd.fout->flush();
                                 cbd.fout->close();
+
                                 delete cbd.fout;
                                 this->numRTPlayRunning--;
+                                this->statRTPlay.erase(devSn);
+                                //TODO:
+                                RedisDelete(devSn + "." + uuid + ".routekey");
+                                break;
                             }
+                            this_thread::sleep_for(100ms);
                         }
                     }
                     else {
@@ -302,7 +317,14 @@ private:
     }
 
     string RedisGet(string key) {
-        return this->envConfig.amqpConfig.rtstopRouteKey;
+        // moc
+        string sn =  key.substr(0,9);
+        cout << "sn: " << sn << endl;
+        if(this->statRTPlay.contains(sn)) {
+            return this->envConfig.amqpConfig.rtstopRouteKey;
+        }
+        
+        return "";
     }
 
     string RedisPut(string key, string value) {
@@ -318,6 +340,15 @@ private:
     {
         if(type_ & 1) {
             this->ezvizToken = ReqEZVizToken(envConfig.appKey, envConfig.appSecret);
+            if (!fs::exists(this->envConfig.videoDir))
+            {
+                if (!fs::create_directory(this->envConfig.videoDir))
+                {
+                    cout << "can't create directory: " << this->envConfig.videoDir << endl;
+                    exit(1);
+                }
+                fs::permissions(this->envConfig.videoDir, fs::perms::all);
+            }
         }
 
         if(type_ & 2) {
@@ -430,7 +461,10 @@ public:
             // parse
             ST_ES_DEVICE_INFO dev = {};
             bool valid = true;
-            json devJson = json::parse(msg);
+
+            string s = string(msg);
+            json devJson = json::parse(s);
+            cout << "parse msg: " << devJson.dump() << endl;
 
             EZCMD ezCmd = EZCMD::NONE;
             string cmd, devSn, devCode, uuid;
@@ -444,6 +478,7 @@ public:
                 }
             }
 
+            cout << "cmd got: " << cmd << endl;
             if(devJson.contains("devSn")) {
                 devSn = devJson["devSn"].get<string>();
                 strncpy(dev.szDevSerial, devSn.c_str(), sizeof(dev.szDevSerial));
@@ -452,7 +487,7 @@ public:
             }
 
             if(devJson.contains("devCode")) {
-                devCode = devJson["devcode"].get<string>();
+                devCode = devJson["devCode"].get<string>();
                 strncpy(dev.szSafeKey, devCode.c_str(), sizeof(dev.szSafeKey));
             }else{
                 ezCmd= EZCMD::NONE;
@@ -464,9 +499,11 @@ public:
             }else{
                 ezCmd = EZCMD::NONE;
             }
+            cout << "chanId got: " << chanId<< endl;
 
             if(devJson.contains("uuid")) {
                 uuid = devJson["uuid"].get<string>();
+                cout << "uuid: " << uuid << endl;
                 if(uuid.empty()) {
                     ezCmd = EZCMD::NONE;
                 }
@@ -477,10 +514,12 @@ public:
             if(EZCMD::NONE == ezCmd) {
                 cerr << "invalid messge: " << msg << endl;
             }else{
+                cout << "query redis" << endl;
                 // query redis 
                 string routekey = RedisGet(devSn + "." + uuid + ".routekey");
                 if(routekey.empty()) {
                     // new capture
+                    cout << "routekey is empty" << endl;
                     if(ezCmd == EZCMD::RTSTOP) {
                         // wrong cmd
                         cerr << "no running instance to stop: " << msg << endl;

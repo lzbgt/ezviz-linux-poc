@@ -10,17 +10,19 @@ connection = pika.BlockingConnection(
 channel = connection.channel()
 channel.exchange_declare(exchange="ezviz.exchange.default", exchange_type="direct")
 
-args = {"x-max-priority": 10}
-args["x-expires"] = 10 * 1000
-channel.queue_declare(queue='ezviz.work.queue.rtplay', durable=False, arguments=args)
+# args = {"x-max-priority": 10}
+# args["x-expires"] = 10 * 1000
+channel.queue_declare(queue='ezviz.work.queue.rtplay', durable=False)
 
 channel.queue_bind(exchange="ezviz.exchange.default",
                    queue='ezviz.work.queue.rtplay', routing_key='rtplay')
 
 body = {}
-body["cmd"] = "rtplay"
+body["cmd"] = "rtstop"
 body["chanId"] = 1
 body["devSn"] = "C90674290"
+body["devCode"] = "bcd"
+body["uuid"] = "abcd"
 body["quality"] = 0
 
 body2 = {}
@@ -29,11 +31,14 @@ body2["chanId"] = 1
 body2["devSn"] = "C90674290"
 body2["quality"] = 0
 
-while True:
-    channel.basic_publish(exchange='ezviz.exchange.default', routing_key='rtplay', body= json.dumps(body))
-    sleep(5);
-    channel.basic_publish(exchange='ezviz.exchange.default', routing_key='rtplay', body= json.dumps(body2))
-    sleep(5)
+if sys.argv[1] == "rtplay":
+    body["cmd"] = "rtplay"
+else:
+    body["cmd"] = "rtstop"
+channel.basic_publish(exchange='ezviz.exchange.default', routing_key='rtplay', body= json.dumps(body))
+
+# channel.basic_publish(exchange='ezviz.exchange.default', routing_key='rtplay', body= json.dumps(body2))
+# sleep(5)
 
 
 print(" [x] Sent " + json.dumps(body))
