@@ -116,4 +116,58 @@ typedef struct EZCallBackUserData{
     int numRetried;
 }EZCallBackUserData;
 
+
+typedef ST_ES_RECORD_INFO * ST_ES_RECORD_INFO_PTR;
+
+typedef struct EZJobDetail {
+    string devsn;
+    string devcode;
+    ST_ES_RECORD_INFO_PTR *cloudVideos;
+    ST_ES_RECORD_INFO_PTR *sdVideos;
+    int fileNumCloud;
+    int fileNumSD;
+}EZJobDetail;
+
+template <typename T>
+class safe_vector
+{
+private:
+    vector<T> vec = vector<T>{};
+    static mutex _m;
+
+public:
+    void push_back(const T &v)
+    {
+        lock_guard<std::mutex> guard(_m);
+        vec.push_back(v);
+    }
+
+    T pop_back()
+    {
+        lock_guard<std::mutex> guard(_m);
+        T ret = T{};
+        memset(&ret, 0, sizeof(T));
+        if (vec.size() > 0)
+        {
+            ret = vec.back();
+            vec.pop_back();
+        }
+
+        return ret;
+    }
+
+    size_t size()
+    {
+        return vec.size();
+    }
+
+    vector<T> &get()
+    {
+        return vec;
+    }
+};
+
+template <typename T>
+mutex safe_vector<T>::_m;
+
 #endif

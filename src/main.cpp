@@ -7,7 +7,7 @@
 #  History:         
 =============================================================================*/
 #include <thread>
-#include "inc/ezviz.hpp"
+#include "inc/svc.hpp"
 
 int main() {
     //

@@ -299,10 +299,8 @@ private:
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev, scb, handle);
                     }
                     else {
-                        //wait for stop message
-                        while(true){
-
-                        }
+                        //snap for new job
+                        this_thread::sleep_until
                     }
                 }
             });
