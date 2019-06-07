@@ -25,17 +25,17 @@ body["devCode"] = "bcd"
 body["uuid"] = "abcd"
 body["quality"] = 0
 
-body2 = {}
-body2["cmd"] = "rtstop"
-body2["chanId"] = 1
-body2["devSn"] = "C90674290"
-body2["quality"] = 0
 
 if sys.argv[1] == "rtplay":
     body["cmd"] = "rtplay"
 else:
     body["cmd"] = "rtstop"
-channel.basic_publish(exchange='ezviz.exchange.default', routing_key='rtplay', body= json.dumps(body))
+
+
+while(1):
+    channel.basic_publish(exchange='ezviz.exchange.rtplay', routing_key='rtplay', body= json.dumps(body))
+    sleep(1);
+    exit(1)
 
 # channel.basic_publish(exchange='ezviz.exchange.default', routing_key='rtplay', body= json.dumps(body2))
 # sleep(5)
