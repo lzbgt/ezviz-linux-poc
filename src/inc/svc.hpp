@@ -14,6 +14,7 @@
 #include <atomic>
 #include <filesystem>
 #include <sstream>
+#include <cpp_redis/cpp_redis>
 #include "amqp/handler.hpp"
 #include "json.hpp"
 #include "common.hpp"
@@ -32,6 +33,12 @@ using namespace std;
 
 using namespace std;
 
+
+typedef struct DEVICE_INFO_EX {
+    ST_ES_DEVICE_INFO base;
+    string uuid;
+}DEVICE_INFO_EX;
+
 class EZVizVideoService {
 private:
     const int PRIORITY_PLAYBACK = 1;
@@ -43,7 +50,7 @@ private:
     mutex mutDetach, mutReady;
 
     safe_vector<EZJobDetail> jobs;
-    safe_vector<ST_ES_DEVICE_INFO> jobsRTPlay;
+    safe_vector<DEVICE_INFO_EX> jobsRTPlay;
     json statRTPlay;
 
     atomic<int> numRTPlayRunning = 0;
@@ -56,10 +63,11 @@ private:
     AMQP::Address *amqpAddr =NULL;
     AMQP::TcpConnection *amqpConn = NULL;
     AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *_chanRTStop =NULL;
+    cpp_redis::client redisClient;
 
     string ReqEZVizToken(string appKey, string appSecret)
     {
-        return "at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f";
+        return "at.5f1j87n71t54g5xg0wqjsw3r0ecke16v-60s30e4ide-17ydmfr-dbymgvf2z";
     }
 
     int InitEZViz()
@@ -117,13 +125,13 @@ private:
             this->chanRTPlay = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTPlay;
             // declare rtplay queue
-            // channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName, AMQP::direct, AMQP::durable + AMQP::autodelete).onError([](const char*msg) {
-            //     cerr << "error declare rtplay exchange: " << msg << endl;
-            // });
+            channel->declareExchange(this->envConfig.amqpConfig.rtplayExchangeName, AMQP::direct).onError([](const char*msg) {
+                cerr << "error declare rtplay exchange: " << msg << endl;
+            });
             AMQP::Table mqArgs;
             // mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
             // mqArgs["x-expires"] = 10 * 1000; // 10s
-            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, (~AMQP::autodelete) & (~AMQP::durable), mqArgs).onError([](const char*msg) {
+            channel->declareQueue(this->envConfig.amqpConfig.rtplayQueName, (~AMQP::durable), mqArgs).onError([](const char*msg) {
                 cerr << "error declare rtplay exchange: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
@@ -134,9 +142,9 @@ private:
             // create rtstop channle
             this->chanRTStop = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanRTStop;
-            // channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic, AMQP::durable + AMQP::autodelete).onError([](const char*msg) {
-            //     cerr << "error declare rtstop exchange: " << msg << endl;
-            // });
+            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName, AMQP::topic).onError([](const char*msg) {
+                cerr << "error declare rtstop exchange: " << msg << endl;
+            });
             // declare playback queue
             channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, (~AMQP::autodelete) & (~AMQP::durable)).onError([](const char*msg) {
                 cerr << "error declare rtstop queue: " << msg << endl;
@@ -146,6 +154,20 @@ private:
         }
 
         return ret;
+    }
+
+    int InitRedis() {
+        this->redisClient.connect(this->envConfig.redisAddr, this->envConfig.redisPort, [](const std::string& host, std::size_t port, cpp_redis::client::connect_state status) {
+            if (status == cpp_redis::client::connect_state::dropped) {
+                std::cout << "client disconnected from " << host << ":" << port << std::endl;
+            }
+        });
+         auto setV = this->redisClient.set("hello", "42");
+         auto getV = this->redisClient.get("hello");
+         this->redisClient.sync_commit();
+         cout << "redisTest: " << getV.get() << endl;
+
+         return 0;
     }
 
     void DownloadOneFile(ST_ES_DEVICE_INFO &dev, ST_ES_RECORD_INFO &di, string appKey, string token)
@@ -257,25 +279,40 @@ private:
                 ES_STREAM_CALLBACK scb = {ezvizMsgCb, ezvizDataCb, (void *)&cbd};
                 while(true) {
                     if(this->jobsRTPlay.size() > 0) {
+                        // double check
                         auto dev = this->jobsRTPlay.pop_back();
+                        if(dev.uuid == "") {
+                            continue;
+                        }
                         int ret = 0;
                         char tmStr[15] = {0};
-                        string devSn= dev.szDevSerial;
+                        string devSn= dev.base.szDevSerial;
                         string filename = this->envConfig.videoDir + "/";
                         time_t currTime = time(NULL);
                         tm *now = localtime(&currTime);
                         strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", now);
-                        filename += string(dev.szDevSerial) + "_" + tmStr + ".mpg";
+                        filename += string(dev.base.szDevSerial) + "_" + tmStr + ".mpg";
                         ofstream *fout = new ofstream();
                         fout->open(filename, ios_base::binary | ios_base::trunc);
                         cout << "filename: " << filename << endl;
                         cbd.fout = fout;
 
-                        cout << "params: " << this->ezvizToken << ", dev:" << dev.szDevSerial << ", " << dev.szSafeKey
-                        << ", " << dev.iDevChannelNo << endl;
+                        cout << "params: " << this->ezvizToken << ", dev:" << dev.base.szDevSerial << ", " << dev.base.szSafeKey
+                        << ", " << dev.base.iDevChannelNo << endl;
 
                         HANDLE handle = NULL;
-                        ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev, scb, handle);
+                        ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev.base, scb, handle);
+                        if(ret != 0) {
+                            cbd.fout->close();
+                            delete cbd.fout;
+                            this->statRTPlay.erase(devSn);
+                            //TODO:
+                            string key = devSn + ":" + dev.uuid + ":routekey";
+                            RedisGet(key);
+                            RedisDelete(key);
+                            this->numRTPlayRunning--;
+                            continue;
+                        }
                         // wait for stop cmd or timeout
                         while(true) {
                             // stop
@@ -287,10 +324,14 @@ private:
                                 delete cbd.fout;
                                 this->statRTPlay.erase(devSn);
                                 //TODO:
-                                RedisDelete(devSn + "." + uuid + ".routekey");
+                                string key = devSn + ":" + dev.uuid + ":routekey";
+                                RedisGet(key);
+                                RedisDelete(key);
                                 this->numRTPlayRunning--;
                                 break;
                             }
+                            // check expiration
+
                             this_thread::sleep_for(100ms);
                         }
                     }
@@ -303,32 +344,57 @@ private:
         }
     }
     //
-    void SendAMQPMsg(AMQP::TcpChannel *ch, string &exchange, string &routekey, const char *msg) {
-        AMQP::Channel * chan = ch;
+    void SendAMQPMsg(AMQP::TcpChannel *chan, string &exchange, string &routekey, const char *msg) {
         chan->startTransaction().onError([](const char* msg){
-            cout << "startTransaction error: " << msg << endl;
+            cout << "startTransaction MQ message error: " << msg << endl;
         });
         chan->publish(exchange, routekey, msg);
         chan->commitTransaction().onSuccess([]{
-            cout << "commit success" << endl;
+            cout << "commit MQ message success" << endl;
         }).onError([](const char* msg){
-            cout <<"commit error: " << msg <<endl;
+            cout <<"commit  MQ message error: " << msg <<endl;
         });
     }
 
     string RedisGet(string key) {
-        // moc
-        string sn =  key.substr(0,9);
-        cout << "sn: " << sn << endl;
-        if(this->statRTPlay.contains(sn)) {
-            return this->envConfig.amqpConfig.rtstopRouteKey;
+        // // moc
+        // string sn =  key.substr(0,9);
+        // cout << "sn: " << sn << endl;
+        // if(this->statRTPlay.contains(sn)) {
+        //     return this->envConfig.amqpConfig.rtstopRouteKey;
+        // }
+        auto get = this->redisClient.get(key);
+        this->redisClient.sync_commit();
+        string value = "";
+        auto r = get.get();
+        if(r.is_string()) {
+            value = r.as_string();
         }
-        
-        return "";
+        cout << "redis get : " << key << "->" << value <<endl;
+        return value;
     }
 
     string RedisPut(string key, string value) {
-        return "";
+        auto get_ = this->redisClient.get(key);
+        auto set_ = this->redisClient.set(key, value);
+        auto exp_ = this->redisClient.pexpire(key, 1000 * 60 * 30); // 30 minutes
+        this->redisClient.sync_commit();
+        string old="";
+        auto r = get_.get();
+        if(r.is_string()) {
+            old = r.as_string();
+        }
+        
+        cout << "redis set : " << key  << " changed[" << old <<"->" << value<< "]" << endl;
+        return old;
+    }
+
+    void RedisDelete(string key) {
+        // TODO: implement soft deletion?
+        cout << "redis del: " << key << endl;
+        auto del_ = this->redisClient.del(vector<string>({{key}}));
+        this->redisClient.sync_commit();
+        del_.get();
     }
 
     /**
@@ -338,6 +404,7 @@ private:
      */
     void _init(int type_)
     {
+        this->envConfig.toString();
         if(type_ & 1) {
             this->ezvizToken = ReqEZVizToken(envConfig.appKey, envConfig.appSecret);
             if (!fs::exists(this->envConfig.videoDir))
@@ -351,6 +418,8 @@ private:
             }
         }
 
+        this->InitRedis();
+
         if(type_ & 2) {
             this->InitAMQP();
         }
@@ -358,6 +427,8 @@ private:
         if(type_ & 4) {
             this->InitEZViz();
         }
+
+
     }
 
     void _free()
@@ -465,7 +536,6 @@ public:
 
             string s = string(msg);
             json devJson = json::parse(s);
-            cout << "parse msg: " << devJson.dump() << endl;
 
             EZCMD ezCmd = EZCMD::NONE;
             string cmd, devSn, devCode, uuid;
@@ -517,7 +587,7 @@ public:
             }else{
                 cout << "query redis" << endl;
                 // query redis 
-                string routekey = RedisGet(devSn + "." + uuid + ".routekey");
+                string routekey = RedisGet(devSn + ":" + uuid + ":routekey");
                 if(routekey.empty()) {
                     // new capture
                     cout << "routekey is empty" << endl;
@@ -525,12 +595,12 @@ public:
                         // wrong cmd
                         cerr << "no running instance to stop: " << msg << endl;
                     }else{
-                        this->jobsRTPlay.push_back(dev);
-                        string res = RedisPut(devSn + "." + uuid + ".routekey",  this->envConfig.amqpConfig.rtstopRouteKey);
+                        this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
+                        string res = RedisPut(devSn + ":" + uuid + ":routekey",  this->envConfig.amqpConfig.rtstopRouteKey);
                         this->statRTPlay[devSn] = EZCMD::RTPLAY;
                         this->numRTPlayRunning++;
                         if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
-
+                            //TODO: stop consume
                         }
                     }
                 }else{
@@ -543,12 +613,14 @@ public:
                             return;
                         }else{
                             // RTSTOP
+                            cout << "RTSTOP on this instance" << endl; 
                             this->statRTPlay[devSn] = EZCMD::RTSTOP;
                         }
                     }else{
                         // on other instance
                         // reroute to its instance
-                        SendAMQPMsg(this->chanRTStop,this->envConfig.amqpConfig.rtstopExchangeName,routekey, msg);
+                        cout << "reroute msg to: " << routekey << endl;
+                        SendAMQPMsg(this->chanRTStop,this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);
                     }
                 }
             }
@@ -559,8 +631,13 @@ public:
 
         // callback operation when a message was received
         auto OnRTStopMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-            cout << "rtstop message received: " << (char*)(message.body()) << endl;
+            size_t len = message.bodySize();
+            char *msg = new char[len+1];
+            msg[len] = 0;
+            memcpy(msg, message.body(), len);
             // acknowledge the message
+            cout << "OnRTStopMessage: " << msg << endl;
+            
             this->chanRTStop->ack(deliveryTag);
         };
 
@@ -603,7 +680,7 @@ public:
 
         // thread worker
 
-        thread worker = thread([](){
+        thread worker = thread([this](){
             int concurrent = 4;
             thread *threads = new thread[concurrent];
             // if(this->envConfig.mode == EZMODE::PLAYBACK) {

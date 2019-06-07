@@ -14,7 +14,8 @@ namespace myutils {
     std::string GenerateUUID(char sep = '-'){
 
     std::string uuid = std::string(36,' ');
-    int rnd = 0;
+    std::srand(time(NULL));
+    int rnd = std::rand();
     int r = 0;
     
     uuid[8] = sep;

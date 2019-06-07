@@ -6,7 +6,7 @@ import sys
 
 # ./ezviz records get 1 2019-05-30\ 00:00:00 2019-05-30\ 09:00:00 C90674290 WGXWZT a287e05ace374c3587e051db8cd4be82 at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f
 connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='192.168.0.105'))
+    pika.ConnectionParameters(host='127.0.0.1'))
 channel = connection.channel()
 channel.exchange_declare(exchange="ezviz.exchange.default", exchange_type="direct")
 
@@ -20,7 +20,7 @@ channel.queue_bind(exchange="ezviz.exchange.default",
 body = {}
 body["cmd"] = "rtstop"
 body["chanId"] = 1
-body["devSn"] = "C90674290"
+body["devSn"] = "C90843484"
 body["devCode"] = "bcd"
 body["uuid"] = "abcd"
 body["quality"] = 0

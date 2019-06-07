@@ -46,6 +46,8 @@ typedef struct EnvConfig {
     string appSecret; /* EZ_APPSECRET */
     string videoDir; /* EZ_VIDEO_DIR */
     EZAMPQConfig amqpConfig; /* EZ_AMQP_ADDR, EZ_AMQP_EXCH, EZ_AMQP_QUEUE, EZ_AMQP_ROUTE */
+    string redisAddr;
+    int redisPort;
     int numConcurrentDevs;
     int ezvizNumTcpThreadsMax; /* EZ_NUM_TCPTHREADS */
     int ezvizNumSslThreadsMax; /* EZ_NUM_SSLTHREADS */
@@ -69,7 +71,8 @@ typedef struct EnvConfig {
         this->amqpConfig.rtstopExchangeName = "ezviz.exchange.rtstop";
         this->amqpConfig.rtstopQueName="ezviz.work.queue.rtstop";
         this->amqpConfig.rtstopRouteKey = myutils::GenerateUUID('.');
-        cout << this->amqpConfig.rtstopRouteKey << endl;
+        this->redisAddr = "127.0.0.1";
+        this->redisPort = 6379;
     }
 
     EnvConfig(){
@@ -105,6 +108,23 @@ typedef struct EnvConfig {
         if(envStr = getenv("EZ_AMQP_ADDR")){
             this->amqpConfig.amqpAddr = string(envStr);
         }
+        if(envStr = getenv("EZ_REDIS_ADDR")){
+            this->redisAddr = string(envStr);
+        }
+
+        if(envStr = getenv("EZ_REDIS_PORT")){
+            this->redisPort = stoi(string(envStr));
+        }
+    }
+
+    void toString(){
+        cout << "\nENVCONFIG:\n\tAMQP ADDR: " << this->amqpConfig.amqpAddr
+        <<"\n\trouting-key: " <<this->amqpConfig.rtstopRouteKey
+        <<"\n\tREDIS: " << this->redisAddr <<":" << this->redisPort
+        <<"\n\tvideoDir: " << this->videoDir
+        <<"\n\tBATCH_SIZE: " << this->numConcurrentDevs
+        <<"\n\tAPPKEY: " << this->appKey
+        <<"\n\tAPPSECRET: " << this->appSecret <<endl;
     }
 }EnvConfig;
 
@@ -166,6 +186,7 @@ public:
 
     vector<T> &get()
     {
+        lock_guard<std::mutex> guard(_m);
         return vec;
     }
 };
