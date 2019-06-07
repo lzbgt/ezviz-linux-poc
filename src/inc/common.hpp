@@ -19,11 +19,15 @@ typedef struct EZAMPQConfig {
     string playbackExchangeName;
     string playbackQueName;
     string playbackRouteKey;
-    //
+    // external interface
     string rtplayExchangeName;
     string rtplayQueName;
     string rtplayRouteKey;
-    //
+    // external interface
+    string rtstopExchangeName_;
+    string rtstopQueName_;
+    string rtstopRouteKey_;
+    // internal only
     string rtstopExchangeName;
     string rtstopQueName;
     string rtstopRouteKey;
@@ -59,7 +63,7 @@ typedef struct EnvConfig {
         this->videoDir = "videos";
         this->numConcurrentDevs = 4;
         //
-        this->amqpConfig.amqpAddr = "amqp://guest:guest@172.20.10.6:5672/";
+        this->amqpConfig.amqpAddr = "amqp://guest:guest@127.0.0.1:5672/";
         this->amqpConfig.playbackExchangeName = "ezviz.exchange.playback";
         this->amqpConfig.playbackQueName="ezviz.work.queue.playback";
         this->amqpConfig.playbackRouteKey = "playback";
@@ -67,6 +71,10 @@ typedef struct EnvConfig {
         this->amqpConfig.rtplayExchangeName = "ezviz.exchange.rtplay";
         this->amqpConfig.rtplayQueName="ezviz.work.queue.rtplay";
         this->amqpConfig.rtplayRouteKey = "rtplay";
+        //
+        this->amqpConfig.rtstopExchangeName_ = "ezviz.exchange.rtplay";
+        this->amqpConfig.rtstopQueName_="ezviz.work.queue.rtstop_";
+        this->amqpConfig.rtstopRouteKey_ = "rtstop_";
         //
         this->amqpConfig.rtstopExchangeName = "ezviz.exchange.rtstop";
         this->amqpConfig.rtstopQueName="ezviz.work.queue.rtstop";

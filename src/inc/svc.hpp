@@ -62,7 +62,7 @@ private:
     string ezvizToken = "at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f";
     AMQP::Address *amqpAddr =NULL;
     AMQP::TcpConnection *amqpConn = NULL;
-    AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *_chanRTStop =NULL;
+    AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *chanRTStop_ =NULL;
     cpp_redis::client redisClient;
 
     string ReqEZVizToken(string appKey, string appSecret)
@@ -137,6 +137,24 @@ private:
             channel->bindQueue(this->envConfig.amqpConfig.rtplayExchangeName,
             this->envConfig.amqpConfig.rtplayQueName, this->envConfig.amqpConfig.rtplayRouteKey).onError([](const char* msg) {
                 cerr << "error bind rtplay queue: " << msg <<  endl;
+            });
+
+            // create _rtstop channle
+            this->chanRTStop_ = new AMQP::TcpChannel(this->amqpConn);
+            channel = this->chanRTStop_;
+            // declare rtplay queue
+            channel->declareExchange(this->envConfig.amqpConfig.rtstopExchangeName_, AMQP::direct).onError([](const char*msg) {
+                cerr << "error declare rtstop_ exchange: " << msg << endl;
+            });
+            AMQP::Table mqArgs2;
+            // mqArgs["x-max-priority"] = PRIORITY_RTPLAY;
+            // mqArgs["x-expires"] = 10 * 1000; // 10s
+            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName_, 0, mqArgs2).onError([](const char*msg) {
+                cerr << "error declare rtplay queue: " << msg << endl;
+            });
+            channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName_,
+            this->envConfig.amqpConfig.rtstopQueName_, this->envConfig.amqpConfig.rtstopRouteKey_).onError([](const char* msg) {
+                cerr << "error bind rtstop_ queue: " << msg <<  endl;
             });
 
             // create rtstop channle
@@ -586,7 +604,7 @@ public:
         };
 
 
-        // callback operation when a message was received
+        // external api;
         auto OnRTPlayMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
             size_t len = message.bodySize();
             char *msg = new char[len+1];
@@ -610,71 +628,44 @@ public:
             uuid = devJson["uuid"];
             chanId = devJson["chanId"].get<int>();
 
-
-            if(EZCMD::NONE == ezCmd) {
-                cerr << "invalid messge: " << msg << endl;
+            if(EZCMD::RTPLAY != ezCmd){
+                cerr << "\tinvalid messge " << endl;
             }else{
-                cout << "query redis" << endl;
+                cout << "check if this dev is in recording..." << endl;
                 // query redis 
                 string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
+                // check redis for existing job
                 if(routekey.empty()) {
                     // new capture
-                    cout << "routekey is empty" << endl;
-                    if(ezCmd == EZCMD::RTSTOP) {
-                        // wrong cmd
-                        cerr << "no running instance to stop: " << msg << endl;
-                    }else{
-                        this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
-                        string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
-                        this->statRTPlay[devSn] = EZCMD::RTPLAY;
-                        this->numRTPlayRunning++;
-                        // message flow control
-                        if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
-                            //TODO: stop consume
-                        }
+                    cout << "\tno existing recording. create new on this instance" << endl;
+                    this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
+                    string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
+                    this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                    this->numRTPlayRunning++;
+                    // message flow control
+                    if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
+                        //TODO: stop consume
                     }
                 }else{
-                    // has capturing instance
-                    if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) { // on this instance
-                        if(ezCmd == EZCMD::RTPLAY){
-                            // already running
-                            cerr << "already recording on this instance with the uuid, just drop the message: " << msg << endl;
-                            // this->chanRTPlay->reject(deliveryTag);
-                        }else{
-                            // RTSTOP
-                            cout << "RTSTOP on this instance" << endl;
-                            this->statRTPlay[devSn] = EZCMD::RTSTOP;
-                        }
+                    // existed
+                    if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
+                        cout << "\talready recording on this instance, ingnore the message: " << routekey << endl;
                     }else{
-                        // on other instance
-                        //
-                        cout << "already recording other onther instance: " << routekey << endl;
-                        // check if that instance is alive
-                        string alive = RedisGet(routekey);
-                        if(alive == ""){
-                            // dead instance
-                            cout << "\t but that instance is dead. ";
-                            if(ezCmd == EZCMD::RTPLAY) {
-                                // new recording
-                                cout <<"create new recording on this instance: " << endl;
-                                this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
-                                string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
-                                this->statRTPlay[devSn] = EZCMD::RTPLAY;
-                                this->numRTPlayRunning++;
-                                // TODO: message flow control
-                            }else{
-                                // drop
-                                cout <<"no need to stop, drop message"<< endl;
+                        // check alive
+                        cout << "\talready recording on another instance: " << routekey << endl;
+                        if(this->RedisGet(routekey) == "") {
+                            cout << "\t\tbut it was a dead job before, create new on this instance" << endl;
+                            this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
+                            string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
+                            this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                            this->numRTPlayRunning++;
+                            // message flow control
+                            if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
+                                //TODO: stop consume
                             }
                         }else{
-                            // alive
-                            if(ezCmd == EZCMD::RTPLAY) {
-                                cout << "\trtplay with same uuid is ignored: " << msg << endl;
-                            }else{
-                                cout << "rerouting rtstop message to the recording instance: " << msg << endl;
-                                SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);
-                            }   
-                        }                    
+                            cout << "\t\t and it's still running. ignore this message" << endl;
+                        }
                     }
                 }
             }
@@ -684,7 +675,57 @@ public:
             cout << "]====== End OnRTPlayMessage\n\n";
         };
 
-        // callback operation when a message was received
+        // external api
+        auto OnRTStopMessage_ = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+            size_t len = message.bodySize();
+            char *msg = new char[len+1];
+            msg[len] = 0;
+            memcpy(msg, message.body(), len);
+            string s = string(msg);
+            json devJson = json::parse(s);
+            cout << "[======OnRTStopMessage_: " << msg << endl;
+            ST_ES_DEVICE_INFO dev = {};
+            EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
+            string devSn, devCode, uuid;
+            int chanId = 1;
+
+            devSn = devJson["devSn"];
+            devCode = devJson["devCode"];
+            uuid = devJson["uuid"];
+            chanId = devJson["chanId"].get<int>();
+
+            if(EZCMD::RTSTOP != ezCmd) {
+                cerr << "\tinvalid messge " << endl;
+            }else{
+                cout << "check if this dev is in recording..." << endl;
+                // query redis 
+                string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
+                // check redis for existing job
+                if(routekey.empty()) {
+                    // no instance
+                    cout << "\tno existing recording. ignore this message" << endl;
+                }else{
+                    // existed on this instance
+                    if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
+                        cout << "\trecording on this instance, try to stop" << routekey << endl;
+                        if(this->statRTPlay.contains(devSn)) {
+                            this->statRTPlay[devSn] = EZCMD::RTSTOP;
+                        }else{
+                            cout << "\t\tbut can't find any running job on this instance, ignored" << endl;
+                        }
+                    }else{
+                        cout << "\trerouting rtstop message to the recording instance: " << routekey << endl;
+                        SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);     
+                    }
+                }
+            }
+
+            // default ACK
+            this->chanRTStop_->ack(deliveryTag);
+            cout << "]======OnRTStopMessage_ " << endl;
+        };
+
+        // internal api
         auto OnRTStopMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
             size_t len = message.bodySize();
             char *msg = new char[len+1];
@@ -709,12 +750,12 @@ public:
                 if(this->statRTPlay.contains(devSn)) {
                     this->statRTPlay[devSn] = EZCMD::RTSTOP;
                 }else{
-                    cout << "error rtstop, no running recording on this instance for: " << msg << endl;
+                    cout << "error rtstop, no running recording on this instance." << endl;
                 }
             }
 
             // acknowledge the message
-            cout << "]======OnRTStopMessage: " << msg << endl;
+            cout << "]======OnRTStopMessage: " << endl;
             
             this->chanRTStop->ack(deliveryTag);
         };
@@ -734,7 +775,13 @@ public:
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
             .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
 
-            // stop queue
+            // stop_ queue (external)
+            this->chanRTStop_->consume(this->envConfig.amqpConfig.rtstopQueName_)
+            .onReceived(OnRTStopMessage_)
+            .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
+            .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
+
+            // stop queue (internal)
             this->chanRTStop->consume(this->envConfig.amqpConfig.rtstopQueName)
             .onReceived(OnRTStopMessage)
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
