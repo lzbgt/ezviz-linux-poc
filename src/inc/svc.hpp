@@ -240,7 +240,7 @@ private:
                         char tmStr[15] = {0};
                         thread th[5];
                         // TODO: concurrently download cloud file
-                        for(int i = 0; i < 4; i++) {
+                        for(int i = 0; i < num; i++) {
 
                         }
                         // SD card file
@@ -818,8 +818,7 @@ public:
 
         // thread worker
         thread worker = thread([this](){
-            int concurrent = 4;
-            thread *threads = new thread[concurrent];
+            thread *threads = new thread[this->envConfig.numConcurrentDevs];
             // if(this->envConfig.mode == EZMODE::PLAYBACK) {
             //     BootStrapDownloader(threads, concurrent);
             // }
