@@ -353,6 +353,9 @@ private:
                                 RedisGet(key);
                                 RedisDelete(key);
                                 this->numRTPlayRunning--;
+                                if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs){
+                                    this->chanRTPlay->resume();
+                                }
                                 break;
                             }
                             // check expiration
@@ -645,6 +648,7 @@ public:
                     // message flow control
                     if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
                         //TODO: stop consume
+                        this->chanRTPlay->pause();
                     }
                 }else{
                     // existed
