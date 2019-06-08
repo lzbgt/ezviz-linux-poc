@@ -33,20 +33,22 @@ def upload_video(url,filePath,token,type):
 def get_file(path,token,address):
     try:
         fileName = os.path.basename(path)
-        list = fileName.split("_")
-        if len(list[0]) == 14 and len(list) ==2:
-            date = datetime.strptime(list[0], "%Y%m%d%H%M%S")
-            timeArray = time.strptime(str(date), "%Y-%m-%d %H:%M:%S")
-            timestamp = int(time.mktime(timeArray) * 1000)
-            print(timestamp)
-            url = "http://{address}/api/v2/secure/admin/private/video/upload/camera/".format(
-                address=address) + str(list[1].split(".")[0]) + "/start/" + str(timestamp) + "/length/" + str(0)
-            '''upload video'''
-            upload_video(url, path, token,"playback")
-        else:
-            logging.info("file type error"+fileName)
-        '''delete file'''
-        del_file(path)
+        size = os.path.getsize(path)
+        if size != 0:
+            list = fileName.split("_")
+            if len(list[0]) == 14 and len(list) ==2:
+                date = datetime.strptime(list[0], "%Y%m%d%H%M%S")
+                timeArray = time.strptime(str(date), "%Y-%m-%d %H:%M:%S")
+                timestamp = int(time.mktime(timeArray) * 1000)
+                print(timestamp)
+                url = "http://{address}/api/v2/secure/admin/private/video/upload/camera/".format(
+                    address=address) + str(list[1].split(".")[0]) + "/start/" + str(timestamp) + "/length/" + str(0)
+                '''upload video'''
+                upload_video(url, path, token,"playback")
+            else:
+                logging.info("file type error"+fileName)
+            '''delete file'''
+            del_file(path)
     except Exception as e:
         logging.info("get file fail")
 
