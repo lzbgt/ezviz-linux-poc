@@ -129,7 +129,7 @@ typedef struct EnvConfig {
         }
 
         if(envStr = getenv("EZ_APISRV_ADDR")){
-            this->apiSrvAddr = stoi(string(envStr));
+            this->apiSrvAddr = string(envStr);
         }
 
         if(envStr = getenv("EZ_UPLOAD_PROG_PATH")){
