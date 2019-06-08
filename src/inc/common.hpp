@@ -51,6 +51,7 @@ typedef struct EnvConfig {
     string appKey; /* EZ_APPKEY:  */
     string appSecret; /* EZ_APPSECRET */
     string videoDir; /* EZ_VIDEO_DIR */
+    string apiSrvAddr;
     string uploadProgPath;
     EZAMPQConfig amqpConfig; /* EZ_AMQP_ADDR, EZ_AMQP_EXCH, EZ_AMQP_QUEUE, EZ_AMQP_ROUTE */
     string redisAddr;
@@ -127,6 +128,10 @@ typedef struct EnvConfig {
             this->redisPort = stoi(string(envStr));
         }
 
+        if(envStr = getenv("EZ_APISRV_ADDR")){
+            this->apiSrvAddr = stoi(string(envStr));
+        }
+
         if(envStr = getenv("EZ_UPLOAD_PROG_PATH")){
             this->uploadProgPath = string(envStr);
             if(this->uploadProgPath.length() >= MAX_PATH_NUM_CHARS) {
@@ -134,18 +139,18 @@ typedef struct EnvConfig {
                 exit(1);
             }
         }
-
-        
     }
 
     void toString(){
         cout << "\nENVCONFIG:\n\tAMQP ADDR: " << this->amqpConfig.amqpAddr
-        <<"\n\trouting-key: " <<this->amqpConfig.rtstopRouteKey
+        <<"\n\tROUTING KEY: " <<this->amqpConfig.rtstopRouteKey
         <<"\n\tREDIS: " << this->redisAddr <<":" << this->redisPort
-        <<"\n\tvideoDir: " << this->videoDir
-        <<"\n\tBATCH_SIZE: " << this->numConcurrentDevs
+        <<"\n\tVIDEO DIR: " << this->videoDir
+        <<"\n\tBATCH SIZE: " << this->numConcurrentDevs
         <<"\n\tAPPKEY: " << this->appKey
-        <<"\n\tAPPSECRET: " << this->appSecret <<endl;
+        <<"\n\tAPPSECRET: " << this->appSecret
+        <<"\n\tAPI SRV ADDR: " << this->apiSrvAddr
+        <<"\n\tUPLOAD PROG PATH: " << this->uploadProgPath <<endl;
     }
 }EnvConfig;
 

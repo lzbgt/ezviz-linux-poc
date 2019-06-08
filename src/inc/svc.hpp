@@ -316,7 +316,7 @@ private:
                         time_t currTime = time(NULL);
                         tm *now = localtime(&currTime);
                         strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", now);
-                        filename += string(dev.base.szDevSerial) + "_" + tmStr + ".mpg";
+                        filename += string(tmStr) + "_" + string(dev.base.szDevSerial) + ".mp4";
                         ofstream *fout = new ofstream();
                         fout->open(filename, ios_base::binary | ios_base::trunc);
                         cout << "filename: " << filename << endl;
@@ -340,25 +340,27 @@ private:
                         }
                         // wait for stop cmd or timeout
                         while(true) {
-                            // stop
-                            if(cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP){
+                            // check to stop
+                            // timeout of job
+                            string routekey = this->RedisGet(this->RedisMakeRTPlayKey(devSn, dev.uuid));
+                            if(cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP||routekey.empty()){
                                 ESOpenSDK_StopPlayBack(handle);
                                 cbd.fout->flush();
                                 cbd.fout->close();
 
                                 delete cbd.fout;
                                 // upload
-                                if(this->envConfig.uploadProgPath.empty()) {
+                                if(this->envConfig.uploadProgPath.empty() || this->envConfig.apiSrvAddr.empty()) {
                                     //
                                 }else{
-                                    string program =string("nohup ") + this->envConfig.uploadProgPath + " --infile " + filename + " &";
+                                    string program =string("nohup ") + this->envConfig.uploadProgPath + " "  + filename + " &";
                                     system(program.c_str());
                                 }
                                 this->statRTPlay.erase(devSn);
                                 //TODO:
                                 string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                                RedisGet(key);
-                                RedisDelete(key);
+                                this->RedisGet(key);
+                                this->RedisDelete(key);
                                 this->numRTPlayRunning--;
                                 if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs){
                                     this->chanRTPlay->resume();
@@ -503,45 +505,49 @@ private:
         EZCMD ezCmd = EZCMD::NONE;
         string cmd, devSn, devCode, uuid;
         int chanId = 1;
-        if(devJson.contains("cmd")) {
-            cmd = devJson["cmd"].get<string>();
-            if(cmd == "rtplay" ) {
-                ezCmd = EZCMD::RTPLAY;
-            }else if(cmd == "rtstop") {
-                ezCmd = EZCMD::RTSTOP;
-            }
-        }
+
+        try{
+            if(devJson.contains("cmd")) {
+                cmd = devJson["cmd"].get<string>();
         
-        if(devJson.contains("devSn")) {
-            devSn = devJson["devSn"].get<string>();
-            strncpy(dev.szDevSerial, devSn.c_str(), sizeof(dev.szDevSerial));
-        }else{
-            ezCmd = EZCMD::NONE;
-        }
-
-        if(devJson.contains("devCode")) {
-            devCode = devJson["devCode"].get<string>();
-            strncpy(dev.szSafeKey, devCode.c_str(), sizeof(dev.szSafeKey));
-        }else{
-            ezCmd= EZCMD::NONE;
-        }
-
-        if(devJson.contains("chanId")) {
-            chanId = devJson["chanId"].get<int>();
-            dev.iDevChannelNo = chanId;
-        }else{
-            ezCmd = EZCMD::NONE;
-        }
-
-        if(devJson.contains("uuid")) {
-            uuid = devJson["uuid"].get<string>();
-            cout << "uuid: " << uuid << endl;
-            if(uuid.empty()) {
+                if(cmd == "rtplay" ) {
+                    ezCmd = EZCMD::RTPLAY;
+                }else if(cmd == "rtstop") {
+                    ezCmd = EZCMD::RTSTOP;
+                }
+            }
+            
+            if(devJson.contains("devSn")) {
+                devSn = devJson["devSn"].get<string>();
+                strncpy(dev.szDevSerial, devSn.c_str(), sizeof(dev.szDevSerial));
+            }else{
                 ezCmd = EZCMD::NONE;
             }
-        }else{
-            ezCmd = EZCMD::NONE;
+
+            if(devJson.contains("devCode")) {
+                devCode = devJson["devCode"].get<string>();
+                strncpy(dev.szSafeKey, devCode.c_str(), sizeof(dev.szSafeKey));
+            }else{
+                ezCmd= EZCMD::NONE;
+            }
+
+            if(devJson.contains("chanId")) {
+                chanId = devJson["chanId"].get<int>();
+                dev.iDevChannelNo = chanId;
+            }else{
+                ezCmd = EZCMD::NONE;
+            }
+
+            if(devJson.contains("uuid")) { 
+                uuid = devJson["uuid"].get<string>();
+                if(uuid.empty()) {
+                    ezCmd = EZCMD::NONE;
+                }
+            }
+        }catch(exception e) {
+            cerr << e.what();
         }
+        
         return ezCmd;
     }
 
@@ -632,11 +638,20 @@ public:
             EZCMD ezCmd = VerifyAMQPMsg(dev, devJson);
             string devSn, devCode, uuid;
             int chanId = 1;
+            try{
+                devSn = devJson["devSn"];
+                devCode = devJson["devCode"];
+                uuid = devJson["uuid"];
+                chanId = devJson["chanId"].get<int>();
+            } catch(exception e) {
+                cout << e.what() << endl;
+                cout << "exception in request, ignore message" << endl;
+                // default ACK
+                this->chanRTPlay->ack(deliveryTag);
+                cout << "]====== End OnRTPlayMessage\n\n";
+                return;
+            }
 
-            devSn = devJson["devSn"];
-            devCode = devJson["devCode"];
-            uuid = devJson["uuid"];
-            chanId = devJson["chanId"].get<int>();
 
             if(EZCMD::RTPLAY != ezCmd){
                 cerr << "\tinvalid messge " << endl;
@@ -700,10 +715,19 @@ public:
             string devSn, devCode, uuid;
             int chanId = 1;
 
-            devSn = devJson["devSn"];
-            devCode = devJson["devCode"];
-            uuid = devJson["uuid"];
-            chanId = devJson["chanId"].get<int>();
+            try{
+                devSn = devJson["devSn"];
+                devCode = devJson["devCode"];
+                uuid = devJson["uuid"];
+                chanId = devJson["chanId"].get<int>();
+            } catch(exception e) {
+                cout << e.what() << endl;
+                cout << "exception in request, ignore message" << endl;
+                // default ACK
+                this->chanRTStop_->ack(deliveryTag);
+                cout << "]====== End OnRTStopMessage_\n\n";
+                return;
+            }
 
             if(EZCMD::RTSTOP != ezCmd) {
                 cerr << "\tinvalid messge " << endl;
@@ -750,10 +774,19 @@ public:
             string devSn, devCode, uuid;
             int chanId = 1;
 
-            devSn = devJson["devSn"];
-            devCode = devJson["devCode"];
-            uuid = devJson["uuid"];
-            chanId = devJson["chanId"].get<int>();
+            try{
+                devSn = devJson["devSn"];
+                devCode = devJson["devCode"];
+                uuid = devJson["uuid"];
+                chanId = devJson["chanId"].get<int>();
+            } catch(exception e) {
+                cout << e.what() << endl;
+                cout << "exception in request, ignore message" << endl;
+                // default ACK
+                this->chanRTStop->ack(deliveryTag);
+                cout << "]====== End OnRTStopMessage\n\n";
+                return;
+            }
 
             if(ezCmd != EZCMD::RTSTOP) {
                 cout << "error msg to process: " << msg << "\n\texpected a rtstop msg\n";
