@@ -13,6 +13,8 @@ using namespace std;
 #define STR_RTPLAY  "rtplay"
 #define STR_RTSTOP  "rtstop"
 
+#define MAX_PATH_NUM_CHARS 512
+
 
 typedef struct EZAMPQConfig {
     string amqpAddr;
@@ -49,6 +51,7 @@ typedef struct EnvConfig {
     string appKey; /* EZ_APPKEY:  */
     string appSecret; /* EZ_APPSECRET */
     string videoDir; /* EZ_VIDEO_DIR */
+    string uploadProgPath;
     EZAMPQConfig amqpConfig; /* EZ_AMQP_ADDR, EZ_AMQP_EXCH, EZ_AMQP_QUEUE, EZ_AMQP_ROUTE */
     string redisAddr;
     int redisPort;
@@ -123,6 +126,16 @@ typedef struct EnvConfig {
         if(envStr = getenv("EZ_REDIS_PORT")){
             this->redisPort = stoi(string(envStr));
         }
+
+        if(envStr = getenv("EZ_UPLOAD_PROG_PATH")){
+            this->uploadProgPath = string(envStr);
+            if(this->uploadProgPath.length() >= MAX_PATH_NUM_CHARS) {
+                cerr << "invalid length of path of upload program" << endl;
+                exit(1);
+            }
+        }
+
+        
     }
 
     void toString(){

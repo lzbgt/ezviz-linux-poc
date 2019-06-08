@@ -230,7 +230,7 @@ private:
     {
         // create download threads, and loop over tasks for ever
         for(int i = 0; i < num; i++) {
-            threads[i] = thread([this] {
+            threads[i] = thread([this, num] {
                 while (this->jobs.size() > 0)
                 {
                     // download one record
@@ -347,6 +347,13 @@ private:
                                 cbd.fout->close();
 
                                 delete cbd.fout;
+                                // upload
+                                if(this->envConfig.uploadProgPath.empty()) {
+                                    //
+                                }else{
+                                    string program =string("nohup ") + this->envConfig.uploadProgPath + " --infile " + filename + " &";
+                                    system(program.c_str());
+                                }
                                 this->statRTPlay.erase(devSn);
                                 //TODO:
                                 string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
@@ -359,7 +366,7 @@ private:
                                 break;
                             }
                             // check expiration
-
+                            // TODO: wait on signal
                             this_thread::sleep_for(3s);
                         }
                     }
@@ -824,7 +831,7 @@ public:
             // }
             
             if(this->envConfig.mode == EZMODE::RTPLAY) {
-                BootStrapRTPlay(threads, concurrent);
+                BootStrapRTPlay(threads, this->envConfig.numConcurrentDevs);
             }
         });
         if(worker.joinable()) {

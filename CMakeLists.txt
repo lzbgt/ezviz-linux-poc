@@ -13,8 +13,13 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/EZServerOpenSDK/lib/linu
 
 set(FRAMEWORKLIB crypto ssl curl protobuf expat amqpcpp dl uv cpp_redis tacopie)
 set(LIB hpr hlog opensslwrap ys_net ezviz_streamclient ezserveropensdk)
+
 link_libraries(${FRAMEWORKLIB} ${LIB})
+
+#add_subdirectory(thirdparty/NFHTTP)
+
 
 set(SOURCE_FILES src/main.cpp)
 add_executable(ezviz ${SOURCE_FILES})
+#target_link_libraries(ezviz NFHTTP)
 #target_compile_definitions(ezviz PUBLIC __BYTE_ORDER = __LITTLE_ENDIAN)
