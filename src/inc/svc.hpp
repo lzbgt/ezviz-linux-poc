@@ -353,7 +353,7 @@ private:
                                 if(this->envConfig.uploadProgPath.empty() || this->envConfig.apiSrvAddr.empty()) {
                                     //
                                 }else{
-                                    string program =string("nohup ") + this->envConfig.uploadProgPath + " "  + filename + " &";
+                                    string program =string("nohup ") + this->envConfig.uploadProgPath + " -s" + this->envConfig.apiSrvAddr + " -i " + filename + " &";
                                     system(program.c_str());
                                 }
                                 this->statRTPlay.erase(devSn);
