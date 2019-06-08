@@ -19,6 +19,6 @@ wget https://raw.githubusercontent.com/lzbgt/ezviz-linux-poc/master/deployment/D
 docker build -t ezviz:master .
 
 # run
-docker run -d --name ezviz -e EZ_MODE=rtplay -e EZ_AMQP_ADDR=amqp://guest:guest@10.10.102.104:5672/ -e EZ_REDIS_ADDR=10.10.102.104 -e EZ_REDIS_PORT=6379 ezviz:master
+docker run -d --name ezviz -e EZ_MODE=rtplay -e EZ_AMQP_ADDR=amqp://guest:guest@10.10.102.104:5672/ -e EZ_REDIS_ADDR=10.10.102.104 -e EZ_APISRV_ADDR="10.10.102.12:8080" -e EZ_REDIS_PORT=6379 ezviz:master
 
 ```
