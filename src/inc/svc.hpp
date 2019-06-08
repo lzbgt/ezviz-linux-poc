@@ -353,7 +353,7 @@ private:
                                 if(this->envConfig.uploadProgPath.empty() || this->envConfig.apiSrvAddr.empty()) {
                                     //
                                 }else{
-                                    string program = string("nohup ") + this->envConfig.uploadProgPath + " -s" + this->envConfig.apiSrvAddr + " -i " + filename + " &";
+                                    string program = string("nohup ") + this->envConfig.uploadProgPath + string(" -s ") + this->envConfig.apiSrvAddr +  string(" -i ") + filename + string(" &");
                                     cout << "call uploading tool, full command line: \n" << program << endl;
                                     system(program.c_str());
                                 }
