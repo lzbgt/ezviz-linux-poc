@@ -19,4 +19,4 @@ wget https://github.com/lzbgt/ezviz-linux-poc/releases/download/0.0.1-alpha-cmd/
 rm -fr src *.go && \
 rm -fr /var/cache/*
 
-CMD ["python scripts/videoSchedDownloader.py"]
+CMD ["python", "/apps/ezviz/scripts/videoSchedDownloader.py"]
