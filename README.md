@@ -28,6 +28,6 @@ docker run -d --name ezviz -e EZ_MODE=rtplay -e EZ_AMQP_ADDR=amqp://guest:guest@
 ### 2 build playback
 ```bash
 mkdir build-playback && cd build-playback && \
-wget -O Dockerfile https://raw.githubusercontent.com/lzbgt/ezviz-linux-poc/master/deployment/Dockerfile && \
+wget -O Dockerfile https://raw.githubusercontent.com/lzbgt/ezviz-linux-poc/master/deployment/downloader.Dockerfile && \
 docker build -t ezviz-playback:master .
 ```
