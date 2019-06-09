@@ -44,7 +44,7 @@ def get_file(path,token,address):
                 url = "http://{address}/api/v2/secure/admin/private/video/upload/camera/".format(
                     address=address) + str(list[1].split(".")[0]) + "/start/" + str(timestamp) + "/length/" + str(0)
                 '''upload video'''
-                upload_video(url, path, token,"playback")
+                upload_video(url, path, token,"rtpaly")
             else:
                 logging.info("file type error"+fileName)
             '''delete file'''
@@ -84,4 +84,5 @@ if __name__ == '__main__':
     #os.system(". ./sourcefile")
     print("upload video")
     #os.system(get_code(start_time='2019-05-30\ 00:00:00',end_time='2019-05-30\ 09:00:00',SN='C90674290',token=get_token()))
-    get_file(input_args.videofile,getToken.get_admin_token(input_args.apiserver),input_args.apiserver)
+    get_file("/apps/ezviz/"+input_args.videofile,getToken.get_admin_token(input_args.apiserver),input_args.apiserver)
+
