@@ -10,6 +10,7 @@ def get_code(start_time,end_time,SN,token):
             startTime=start_time, endTime=end_time, SN=SN, Token=token)
     except Exception as e:
         print(e)
+    print(code)
     return code
 
 '''get image'''
