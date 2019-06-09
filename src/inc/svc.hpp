@@ -80,7 +80,10 @@ private:
             exit(1);
         }
         cout << "\ttoken: " << token << endl;
-
+        if(token.empty()){
+            cout << "failed to get token, exiting ..." << endl;
+            exit(1);
+        }
         this->ezvizToken = token;
         return token;
         //return "at.5f1j87n71t54g5xg0wqjsw3r0ecke16v-60s30e4ide-17ydmfr-dbymgvf2z";

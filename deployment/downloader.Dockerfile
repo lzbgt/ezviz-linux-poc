@@ -10,7 +10,7 @@ RUN curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Cen
 
 RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7 && yum install epel-release -y && yum install python-pip -y 
 
-RUN yum install -y git && \
+RUN yum install -y git wget&& \
 mkdir -p /apps/ezviz && cd /apps/ezviz && \
 pip install -r /requestments.txt && \ 
 git clone --depth 1 https://github.com/lzbgt/ezviz-linux-poc . && \
