@@ -65,9 +65,25 @@ private:
     AMQP::TcpChannel *chanPlayback = NULL, *chanRTPlay =NULL, *chanRTStop = NULL, *chanRTStop_ =NULL;
     cpp_redis::client redisClient;
 
-    string ReqEZVizToken(string appKey, string appSecret)
+    string ReqEZVizToken()
     {
-        return "at.5f1j87n71t54g5xg0wqjsw3r0ecke16v-60s30e4ide-17ydmfr-dbymgvf2z";
+        string body = "appKey="+ this->envConfig.appKey + "&appSecret=" + this->envConfig.appSecret;
+        cout << "getting ezviz token ..." << endl;
+        string token;
+        string res = myutils::HTTPPostRequest(string(OPENADDR) + "/api/lapp/token/get", body, map<string,string>{});
+        cout << "response: " << res << endl;
+        try {
+            json jres = json::parse(res);
+            token = jres["data"]["accessToken"];
+        }catch(exception e) {
+            cout << "exception: " << e.what();
+            exit(1);
+        }
+        cout << "\ttoken: " << token << endl;
+
+        this->ezvizToken = token;
+        return token;
+        //return "at.5f1j87n71t54g5xg0wqjsw3r0ecke16v-60s30e4ide-17ydmfr-dbymgvf2z";
     }
 
     int InitEZViz()
@@ -455,7 +471,7 @@ private:
     {
         this->envConfig.toString();
         if(type_ & 1) {
-            this->ezvizToken = ReqEZVizToken(envConfig.appKey, envConfig.appSecret);
+            this->ReqEZVizToken();
             if (!fs::exists(this->envConfig.videoDir))
             {
                 if (!fs::create_directory(this->envConfig.videoDir))
@@ -850,8 +866,16 @@ public:
 
         // thread redis alive
         thread alive = thread([this](){
+            static long long cnt = 0;
+            const long long interval = 2 * 60 * 60;
             while(true){
-                this_thread::sleep_for(5s);
+                
+                cnt++;
+                if(cnt % interval == 0) {
+                    //refresh token
+                    this->ReqEZVizToken();
+                }
+                this_thread::sleep_for(4s);
                 this->RedisExpireMs(this->envConfig.amqpConfig.rtstopRouteKey, 1000*7);
             }
         });
