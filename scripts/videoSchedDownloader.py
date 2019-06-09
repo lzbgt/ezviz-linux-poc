@@ -60,9 +60,12 @@ def get_device_sn(address,start_time,end_time,device_sn):
         logging.info("upload video:" + r.text)
 
     result = json.loads(r.text)['data']['list']
+    devices= []
     if len(device_sn) != 0:
-        os.system(get_code(start_time=start_time, end_time=end_time, SN=device_sn,
-                           token=getToken.get_token()))
+        devices = str(device_sn).split(",")
+        for j in devices:
+            os.system(get_code(start_time=start_time, end_time=end_time, SN=j,
+                               token=getToken.get_token()))
     else:
         for i in result:
             if i['serialNo'][0] == 'C':
@@ -113,8 +116,16 @@ input_args = get_args()
 
 
 
+
+
 if __name__ == '__main__':
     # os.system(". ./sourcefile")
     # print("upload video")
-    get_device_sn(input_args.apiserver,input_args.starttime,input_args.endtime,input_args.deviceSn)
-    get_file(input_args.path,getToken.get_admin_token(input_args.apiserver),input_args.apiserver,input_args.targetpath)
+    api_server = os.environ.get("API_SERVER")
+    start_time = os.environ.get("START_TIME")
+    end_time = os.environ.get("END_TIME")
+    file_path = os.environ.get("FILE_PATH")
+    target_path = os.environ.get("TARGET_PATH")
+    device_serial = os.environ.get("DEVICE_LIST")
+    get_device_sn(api_server,start_time,end_time,device_serial)
+    get_file(file_path,getToken.get_admin_token(api_server),api_server,target_path)
