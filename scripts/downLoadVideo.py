@@ -84,4 +84,4 @@ if __name__ == '__main__':
     #os.system(". ./sourcefile")
     print("upload video")
     #os.system(get_code(start_time='2019-05-30\ 00:00:00',end_time='2019-05-30\ 09:00:00',SN='C90674290',token=get_token()))
-    get_file(input_args.videofile,getToken.get_admin_token(input_args.apiserver),input_args.apiserver)
+    get_file('/apps/ezviz/'+input_args.videofile,getToken.get_admin_token(input_args.apiserver),input_args.apiserver)
