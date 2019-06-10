@@ -495,8 +495,6 @@ private:
         if(type_ & 4) {
             this->InitEZViz();
         }
-
-
     }
 
     void _free()
@@ -870,9 +868,8 @@ public:
         // thread redis alive
         thread alive = thread([this](){
             static long long cnt = 0;
-            const long long interval = 2 * 60 * 60;
-            while(true){
-                
+            const long long interval = 1;
+            while(true){  
                 cnt++;
                 if(cnt % interval == 0) {
                     //refresh token

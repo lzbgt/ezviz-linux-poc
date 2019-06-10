@@ -235,61 +235,63 @@ public:
 template <typename T>
 mutex safe_vector<T>::_m;
 
-namespace myutils {}
-    using namespace Poco::Net;
-    using namespace Poco;
+namespace myutils {
+using namespace Poco::Net;
+using namespace Poco;
 
-    string HTTPPostRequest(string url, string body, map<string,string> headers)
-    {
-        try {
- 
-            // prepare session
-            URI uri(url);
-                       const Context::Ptr context = new Poco::Net::Context(
-                            Context::CLIENT_USE, "", "", "",
-                            Context::VERIFY_NONE, 9, false,
-                                "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+string HTTPPostRequest(string url, string body, map<string,string> headers)
+{
+    try {
+
+        // prepare session
+        URI uri(url);
+        Context::Ptr context = new Poco::Net::Context(
+            Context::CLIENT_USE, "", "", "",
+            Context::VERIFY_NONE, 9, false,
+            "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
         HTTPSClientSession session(uri.getHost(), uri.getPort(), context);
 
-            // prepare path
-            string path(uri.getPathAndQuery());
-            if (path.empty()) path = "/";
+        // prepare path
+        string path(uri.getPathAndQuery());
+        if (path.empty()) path = "/";
 
-            // send request
-            HTTPRequest req(HTTPRequest::HTTP_POST, path, HTTPMessage::HTTP_1_1);
-            req.setContentType("application/x-www-form-urlencoded");
+        // send request
+        HTTPRequest req(HTTPRequest::HTTP_POST, path, HTTPMessage::HTTP_1_1);
+        req.setContentType("application/x-www-form-urlencoded");
 
-            // Set headers here
-            if(!headers.empty()) {
-                for(map<string,string>::iterator it = headers.begin();
-                        it != headers.end(); it++) {
-                    req.set(it->first, it->second);
-                }
-
+        // Set headers here
+        if(!headers.empty()) {
+            for(map<string,string>::iterator it = headers.begin();
+                    it != headers.end(); it++) {
+                req.set(it->first, it->second);
             }
-            // Set the request body
-            req.setContentLength( body.length() );
 
-            // sends request, returns open stream
-            std::ostream& os = session.sendRequest(req);
-            os << body;  // sends the body
-            //req.write(std::cout); // print out request
-
-            // get response
-            HTTPResponse res;
-            cout << res.getStatus() << " " << res.getReason() << endl;
-
-            istream &is = session.receiveResponse(res);
-            stringstream ss;
-            StreamCopier::copyStream(is, ss);
-
-            return ss.str();
         }
-        catch (Exception &ex) {
-            cerr << ex.displayText() << endl;
-            return "";
-        }
+        
+        // Set the request body
+        req.setContentLength( body.length() );
+
+        // sends request, returns open stream
+        std::ostream& os = session.sendRequest(req);
+        os << body;  // sends the body
+        //req.write(std::cout); // print out request
+
+        // get response
+        HTTPResponse res;
+        cout << res.getStatus() << " " << res.getReason() << endl;
+
+        istream &is = session.receiveResponse(res);
+        stringstream ss;
+        StreamCopier::copyStream(is, ss);
+
+        return ss.str();
     }
+    catch (Exception &ex) {
+        cerr << ex.displayText() << endl;
+        return "";
+    }
+}
+
 }
 
 #endif
