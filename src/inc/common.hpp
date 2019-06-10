@@ -221,6 +221,7 @@ public:
 
     size_t size()
     {
+        lock_guard<std::mutex> guard(_m);
         return vec.size();
     }
 
@@ -234,7 +235,7 @@ public:
 template <typename T>
 mutex safe_vector<T>::_m;
 
-namespace myutils {
+namespace myutils {}
     using namespace Poco::Net;
     using namespace Poco;
 
