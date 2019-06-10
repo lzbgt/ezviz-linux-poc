@@ -10,6 +10,7 @@ def get_code(start_time,end_time,SN,token):
             startTime=start_time, endTime=end_time, SN=SN, Token=token)
     except Exception as e:
         print(e)
+    print(code)
     return code
 
 '''get image'''
@@ -29,7 +30,7 @@ def get_file(path,token,address,target):
                         address=address) + str(list[1]) + "/start/" + str(timestamp) + "/length/" + str(
                         list[2].split(".")[0])
                     '''upload video'''
-                    upload_video(url, path + "/" + file, token,"rtplay")
+                    upload_video(url, path + "/" + file, token,"playback")
                 else:
                     shutil.move(path+fileName,target+fileName)
         '''delete file'''

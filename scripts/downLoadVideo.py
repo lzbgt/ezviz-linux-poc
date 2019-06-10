@@ -44,7 +44,7 @@ def get_file(path,token,address):
                 url = "http://{address}/api/v2/secure/admin/private/video/upload/camera/".format(
                     address=address) + str(list[1].split(".")[0]) + "/start/" + str(timestamp) + "/length/" + str(0)
                 '''upload video'''
-                upload_video(url, path, token,"rtpaly")
+                upload_video(url, path, token,"rtplay")
             else:
                 logging.info("file type error"+fileName)
             '''delete file'''
