@@ -422,7 +422,7 @@ private:
                     }
                     else {
                         //snap for new job
-                        this_thread::sleep_for(100ms);
+                        this_thread::sleep_for(500ms);
                     }
                 }
             });
