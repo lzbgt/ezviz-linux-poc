@@ -868,7 +868,7 @@ public:
         // thread redis alive
         thread alive = thread([this](){
             static long long cnt = 0;
-            const long long interval = 1;
+            const long long interval = 4 * 60 * 60;
             while(true){  
                 cnt++;
                 if(cnt % interval == 0) {

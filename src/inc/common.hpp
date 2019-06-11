@@ -239,16 +239,17 @@ namespace myutils {
 using namespace Poco::Net;
 using namespace Poco;
 
+Context::Ptr context = new Poco::Net::Context(
+    Context::CLIENT_USE, "", "", "",
+    Context::VERIFY_NONE, 9, false,
+    "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
 string HTTPPostRequest(string url, string body, map<string,string> headers)
 {
     try {
 
         // prepare session
         URI uri(url);
-        Context::Ptr context = new Poco::Net::Context(
-            Context::CLIENT_USE, "", "", "",
-            Context::VERIFY_NONE, 9, false,
-            "ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
         HTTPSClientSession session(uri.getHost(), uri.getPort(), context);
 
         // prepare path
@@ -267,7 +268,7 @@ string HTTPPostRequest(string url, string body, map<string,string> headers)
             }
 
         }
-        
+
         // Set the request body
         req.setContentLength( body.length() );
 
