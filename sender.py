@@ -30,13 +30,15 @@ chanStop.queue_bind(exchange="ezviz.exchange.rtplay",
 body = {}
 body["cmd"] = "rtstop"
 body["chanId"] = 1
-body["devSn"] = "C90842444" #"C90842467"  #"C90842444" #"C90843626" #"C90842444" #"C90843484"
+body["devSn"] = "C90843626" #"C90842467"  #"C90842444" #"C90843626" #"C90842444" #"C90843484"
 body["devCode"] = "bcd"
 body["uuid"] = "abcd"
 body["quality"] = 0
 
 
-if sys.argv[1] == "rtplay":
+body["devSn"] = sys.argv[1]
+
+if sys.argv[2] == "rtplay":
     body["cmd"] = "rtplay"
     chanPlay.basic_publish(exchange='ezviz.exchange.rtplay', routing_key='rtplay', body= json.dumps(body))
 else:

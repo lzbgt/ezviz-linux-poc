@@ -15,6 +15,7 @@
 #include <filesystem>
 #include <sstream>
 #include <cpp_redis/cpp_redis>
+#include <chrono>
 #include "amqp/handler.hpp"
 #include "json.hpp"
 #include "common.hpp"
@@ -23,6 +24,8 @@
 using json = nlohmann::json;
 namespace fs = std::filesystem;
 using namespace std;
+using namespace std::chrono;
+
 
 #define OPENADDR "https://open.ys7.com"
 #define ENV_VIDEO_DIR "YS_VIDEO_DIR"
@@ -183,7 +186,7 @@ private:
                 cerr << "error declare rtstop exchange: " << msg << endl;
             });
             // declare playback queue
-            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, 0).onError([](const char*msg) {
+            channel->declareQueue(this->envConfig.amqpConfig.rtstopQueName, AMQP::autodelete).onError([](const char*msg) {
                 cerr << "error declare rtstop queue: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.rtstopExchangeName,
@@ -231,6 +234,8 @@ private:
         EZCallBackUserData cbd;
         cbd.fout = fout;
         cbd.stat = 1;
+        cbd.bytesWritten = 0;
+        cbd.numRetried = 0;
         ES_STREAM_CALLBACK scb = {NULL, NULL, (void *)&cbd};
         HANDLE handle = NULL;
         ret = ESOpenSDK_StartPlayBack(token.c_str(), dev, *rip, scb, handle);
@@ -298,7 +303,7 @@ private:
                 cout << "=====> data h: " << pHandle << " datatype: " << dataType << " pd: " << pUser << endl;
             }
             
-            if (ES_STREAM_TYPE::ES_STREAM_DATA == dataType)
+            if (cbd!= NULL && (ES_STREAM_TYPE::ES_STREAM_DATA == dataType))
             {
                 // force sequential writing when multi-threading in EZVizSDK (normal case)
                 cbd->m.lock();
@@ -311,6 +316,8 @@ private:
                     cbd->stat = 0;
                 }
             }
+
+            cbd->bytesWritten += buflen;
             return 0;
         };
 
@@ -320,6 +327,8 @@ private:
                 // loop infinitely for rtplay job
                 EZCallBackUserData cbd;
                 cbd.stat = 1;
+                cbd.bytesWritten = 0;
+                cbd.numRetried = 0;
                 ES_STREAM_CALLBACK scb = {ezvizMsgCb, ezvizDataCb, (void *)&cbd};
                 while(true) {
                     if(this->jobsRTPlay.size() > 0) {
@@ -350,14 +359,14 @@ private:
                             cbd.fout->close();
                             delete cbd.fout;
                             this->statRTPlay.erase(devSn);
-                            //TODO:
                             string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                            RedisGet(key);
                             RedisDelete(key);
                             this->numRTPlayRunning--;
                             continue;
                         }
                         // wait for stop cmd or timeout
+                        auto chro_start = high_resolution_clock::now(); 
+                        unsigned long long sizeDownloaded = cbd.bytesWritten;
                         while(true) {
                             // check to stop
                             // timeout of job
@@ -377,19 +386,26 @@ private:
                                     system(program.c_str());
                                 }
                                 this->statRTPlay.erase(devSn);
-                                //TODO:
                                 string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                                this->RedisGet(key);
                                 this->RedisDelete(key);
                                 this->numRTPlayRunning--;
                                 if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs){
-                                    this->chanRTPlay->resume();
+                                    // TODO: resume is not supported in the lib
+                                    // this->chanRTPlay->resume();
                                 }
                                 break;
                             }
                             // check expiration
                             // TODO: wait on signal
                             this_thread::sleep_for(3s);
+                            auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start); 
+                            if(duora.count() >= 120) {
+                                cout << "streaming speed EST: " << (cbd.bytesWritten - sizeDownloaded) / (duora.count() * 8.0 * 1024 + 1) << "KB/s" << endl;
+                                // reset size
+                                sizeDownloaded = cbd.bytesWritten;
+                                // reset time start
+                                chro_start = high_resolution_clock::now();
+                            }
                         }
                     }
                     else {
@@ -413,7 +429,7 @@ private:
         });
     }
 
-    string RedisGet(string key) {
+    string RedisGet(string key, bool bPrint = false) {
         // // moc
         // string sn =  key.substr(0,9);
         // cout << "sn: " << sn << endl;
@@ -427,7 +443,10 @@ private:
         if(r.is_string()) {
             value = r.as_string();
         }
-        cout << "redis get : " << key << "->" << value <<endl;
+        if(bPrint){
+            cout << "redis get : " << key << "->" << value <<endl;
+        }
+        
         return value;
     }
 
@@ -680,17 +699,21 @@ public:
                 // check redis for existing job
                 if(routekey.empty()) {
                     // new capture
+                    // message flow control
+                    cout << "running jobs on this instance: " << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
+                    if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
+                        //TODO: stop consume, pause is not IMPLEMENTED in the library, use reject instead
+                        // this->chanRTPlay->pause();
+                        cout << "\tflow control, reject this msg" << endl;
+                        this->chanRTPlay->reject(deliveryTag, AMQP::multiple + AMQP::noack);
+                        return;
+                    }
+
                     cout << "\tno existing recording. create new on this instance" << endl;
                     this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
                     string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                     this->statRTPlay[devSn] = EZCMD::RTPLAY;
                     this->numRTPlayRunning++;
-                    // message flow control
-                    cout << "running jobs on this instance: %d" << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
-                    if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
-                        //TODO: stop consume
-                        this->chanRTPlay->pause();
-                    }
                 }else{
                     // existed
                     if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
@@ -699,17 +722,20 @@ public:
                         // check alive
                         cout << "\talready recording on another instance: " << routekey << endl;
                         if(this->RedisGet(routekey) == "") {
-                            cout << "\t\tbut it was a dead job before, create new on this instance" << endl;
+                            cout << "\t\tbut it was a dead job before, try createing new on this instance" << endl;
+                            cout << "running jobs on this instance: " << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
+                            // message flow control
+                            if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
+                                //TODO: stop consume, pause is not IMPLEMENTED in the library, use reject instead
+                                // this->chanRTPlay->pause();
+                                cout << "\tflow control, reject this msg" << endl;
+                                this->chanRTPlay->reject(deliveryTag, AMQP::multiple + AMQP::noack);
+                                return;
+                            }
                             this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid});
                             string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                             this->statRTPlay[devSn] = EZCMD::RTPLAY;
                             this->numRTPlayRunning++;
-                            cout << "running jobs on this instance: %d" << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
-                            // message flow control
-                            if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
-                                //TODO: stop consume
-                                this->chanRTPlay->pause();
-                            }
                         }else{
                             cout << "\t\t and it's still running. ignore this message" << endl;
                         }
@@ -763,19 +789,23 @@ public:
                 }else{
                     // existed on this instance
                     if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
-                        cout << "\trecording on this instance, try to stop" << routekey << endl;
+                        cout << "\trecording on this instance, try to stop " << routekey << endl;
                         if(this->statRTPlay.contains(devSn)) {
                             this->statRTPlay[devSn] = EZCMD::RTSTOP;
                         }else{
                             cout << "\t\tbut can't find any running job on this instance, ignored" << endl;
                         }
                     }else{
-                        cout << "\trerouting rtstop message to the recording instance: " << routekey << endl;
-                        SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);     
+                        if(this->RedisGet(routekey).empty()) {    
+                            cout << "\tthe recording instance is dead, drop message and delete recording key" << routekey << endl; 
+                            RedisDelete(RedisMakeRTPlayKey(devSn, uuid));
+                        }else{
+                            cout << "\trerouting rtstop message to the recording instance: " << routekey << endl;
+                            SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg); 
+                        }    
                     }
                 }
             }
-
             // default ACK
             this->chanRTStop_->ack(deliveryTag);
             cout << "]======OnRTStopMessage_ " << endl;

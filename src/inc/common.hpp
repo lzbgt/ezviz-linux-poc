@@ -179,6 +179,8 @@ typedef struct EZCallBackUserData {
     mutex m;
     // retried times on network failure etc. TODO: NOT IMPLEMENTED
     int numRetried;
+    // downloadBytes
+    unsigned long long bytesWritten;
 } EZCallBackUserData;
 
 
