@@ -797,7 +797,7 @@ public:
                         }
                     }else{
                         if(this->RedisGet(routekey).empty()) {    
-                            cout << "\tthe recording instance is dead, drop message and delete recording key" << routekey << endl; 
+                            cout << "\tthe recording instance is dead, drop the message and delete the job" << routekey << endl; 
                             RedisDelete(RedisMakeRTPlayKey(devSn, uuid));
                         }else{
                             cout << "\trerouting rtstop message to the recording instance: " << routekey << endl;
