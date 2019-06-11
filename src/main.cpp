@@ -59,6 +59,7 @@ typedef struct CBUSERDATA
     int stat;
     // avoiding miltithreads racing writing to one file
     mutex m;
+    unsigned long long bytesWritten;
 } CBUSERDATA;
 
 template <typename T>
@@ -144,7 +145,8 @@ int msgCb(HANDLE pHandle, int code, int eventType, void *pUser)
 {
     cout << "=====> msg h: " << pHandle << " code: " << code << " evt: " << eventType << " pd: " << pUser << endl;
     CBUSERDATA *cbd = (CBUSERDATA *)pUser;
-    if (eventType != 0 || code == ES_STREAM_CLIENT_RET_OVER)
+    
+    if (cbd != NULL &&(eventType != 0 || code == ES_STREAM_CLIENT_RET_OVER))
     {
             cbd->stat = 0;
     }
@@ -156,10 +158,11 @@ int msgCb(HANDLE pHandle, int code, int eventType, void *pUser)
 int dataCb(HANDLE pHandle, unsigned int dataType, unsigned char *buf, unsigned int buflen, void *pUser)
 {
     CBUSERDATA *cbd = (CBUSERDATA *)pUser;
-    if (ES_STREAM_TYPE::ES_STREAM_DATA == dataType)
+    if (cbd != NULL && (ES_STREAM_TYPE::ES_STREAM_DATA == dataType))
     {
         cbd->m.lock();
         cbd->fout->write(reinterpret_cast<const char *>(buf), buflen);
+        cbd->bytesWritten += buflen;
         cbd->m.unlock();
     }
     else if (ES_STREAM_TYPE::ES_STREAM_END == dataType)
@@ -180,6 +183,7 @@ json search_records_json(string token, ST_ES_DEVICE_INFO &dev, string startTime,
     std::strncpy(ri.szStopTime, endTime.c_str(), sizeof(ri.szStopTime));
 
     cout << "seaarch json, start: " << startTime << ", token: " << token << endl;
+
     json j;
     ret = ESOpenSDK_SearchVideoRecord(token.c_str(), dev, ri, &pOut, &length);
     if (0 != ret)
@@ -265,7 +269,7 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
             ofstream *fout = new ofstream();
             fout->open(filename, ios_base::binary | ios_base::trunc);
             cout << "file opened: " << filename << endl;
-            CBUSERDATA cbd = {fout, 1};
+            CBUSERDATA cbd = {fout, 1, mutex{}, 0};
             ES_STREAM_CALLBACK scb = {msgCb, dataCb, (void *)&cbd};
             HANDLE handle = NULL;
             jRet["devsn"] = string(dev.szDevSerial);
@@ -293,18 +297,28 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
 
             // start time
             auto chro_start = high_resolution_clock::now(); 
+            unsigned long long sizeDownloaded = cbd.bytesWritten;
             while (cbd.stat == 1)
             {
                 // check timeout
-                auto duora = duration_cast<minutes>(high_resolution_clock::now() - chro_start); 
-                if(duora.count() >= 15) {
-                    cout <<"download exceeds 15 minutes, save downloaded parts and skip the rest. downloading next video." << endl;
-                    break;//
+                auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start); 
+                if(duora.count() >= 120) {
+                    cout << "download speed est: " << (cbd.bytesWritten - sizeDownloaded) / (duora.count() *8.0) << "KB/s" << endl;
+                    if(cbd.bytesWritten == sizeDownloaded) {
+                        cout <<"file size not change for 1 minute, save downloaded and start next file." << endl;
+                        break;
+                    }else{
+                        // reset size
+                        sizeDownloaded = cbd.bytesWritten;
+                        // reset time start
+                        chro_start = high_resolution_clock::now();
+                    }
                 }
                 usleep(1000 * 1000 * 4);
                 if(gSignalStatus == SIGINT) {
                     break;
                 }
+                
             }
             
             ESOpenSDK_StopPlayBack(handle);
@@ -539,6 +553,9 @@ int main(int argc, char *argv[])
         cout << "search records: " << endl;
         cout <<"token: " << token << ", startTime: " << startTime << ", endTime: " << endTime << endl;
         safe_vector<ES_RECORD_INFO *> *recList = search_records(token, dev, startTime, endTime);
+        if(recList == NULL) {
+            return 0;
+        }
         if (recList->size() != 0)
         {
             int idx = 0;
