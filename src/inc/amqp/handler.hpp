@@ -21,7 +21,7 @@ private:
      */
     virtual void onError(AMQP::TcpConnection *connection, const char *message) override
     {
-        std::cout << "error: " << message << std::endl;
+        std::cout << "onError error: " << message << std::endl;
     }
 
     /**

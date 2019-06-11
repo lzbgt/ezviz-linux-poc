@@ -130,11 +130,11 @@ private:
             AMQP::Table mqArgs;
             // mqArgs["x-max-priority"] = PRIORITY_PLAYBACK;
             channel->declareQueue(this->envConfig.amqpConfig.playbackQueName, AMQP::durable, mqArgs).onError([](const char *msg) {
-                cerr << "error: " << msg << endl;
+                cerr << "on declaureQueue error: " << msg << endl;
             });
             channel->bindQueue(this->envConfig.amqpConfig.playbackExchangeName,
             this->envConfig.amqpConfig.playbackQueName, this->envConfig.amqpConfig.playbackRouteKey).onError([](const char * msg) {
-                cerr << "error: " << msg << endl;
+                cerr << "on buildQueue error: " << msg << endl;
             });
         }
 
@@ -686,6 +686,7 @@ public:
                     this->statRTPlay[devSn] = EZCMD::RTPLAY;
                     this->numRTPlayRunning++;
                     // message flow control
+                    cout << "running jobs on this instance: %d" << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
                     if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
                         //TODO: stop consume
                         this->chanRTPlay->pause();
@@ -703,9 +704,11 @@ public:
                             string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                             this->statRTPlay[devSn] = EZCMD::RTPLAY;
                             this->numRTPlayRunning++;
+                            cout << "running jobs on this instance: %d" << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
                             // message flow control
                             if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs){
                                 //TODO: stop consume
+                                this->chanRTPlay->pause();
                             }
                         }else{
                             cout << "\t\t and it's still running. ignore this message" << endl;
