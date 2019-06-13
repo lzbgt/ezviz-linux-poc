@@ -1,0 +1,2977 @@
+[{
+    'deviceSerial': 'C90840816',
+    'videos': [{
+        'video': {
+            'startTime': 1560323736000,
+            'endTime': 1560324092000,
+            'recType': 2
+        },
+        'alarms': [1560323795000, 1560323865000, 1560323982000, 1560324071000]
+    }, {
+        'video': {
+            'startTime': 1560327444000,
+            'endTime': 1560328002000,
+            'recType': 2
+        },
+        'alarms': [1560327462000, 1560327522000, 1560327985000]
+    }, {
+        'video': {
+            'startTime': 1560328024000,
+            'endTime': 1560328887000,
+            'recType': 2
+        },
+        'alarms': [1560328228000, 1560328341000, 1560328532000, 1560328630000, 1560328758000, 1560328830000]
+    }, {
+        'video': {
+            'startTime': 1560328887000,
+            'endTime': 1560328905000,
+            'recType': 2
+        },
+        'alarms': [1560328904000]
+    }, {
+        'video': {
+            'startTime': 1560328994000,
+            'endTime': 1560329073000,
+            'recType': 2
+        },
+        'alarms': [1560329025000]
+    }, {
+        'video': {
+            'startTime': 1560329098000,
+            'endTime': 1560329118000,
+            'recType': 2
+        },
+        'alarms': [1560329105000]
+    }, {
+        'video': {
+            'startTime': 1560340490000,
+            'endTime': 1560340521000,
+            'recType': 2
+        },
+        'alarms': [1560340516000]
+    }]
+}, {
+    'deviceSerial': 'C90841152',
+    'videos': [{
+        'video': {
+            'startTime': 1560329021000,
+            'endTime': 1560329786000,
+            'recType': 2
+        },
+        'alarms': [1560329199000, 1560329691000]
+    }, {
+        'video': {
+            'startTime': 1560334497000,
+            'endTime': 1560335267000,
+            'recType': 2
+        },
+        'alarms': [1560334830000]
+    }]
+}, {
+    'deviceSerial': 'C90842333',
+    'videos': [{
+        'video': {
+            'startTime': 1560327669000,
+            'endTime': 1560328240000,
+            'recType': 2
+        },
+        'alarms': [1560328099000]
+    }]
+}, {
+    'deviceSerial': 'C90842472',
+    'videos': [{
+        'video': {
+            'startTime': 1560326368000,
+            'endTime': 1560326714000,
+            'recType': 2
+        },
+        'alarms': [1560326611000]
+    }, {
+        'video': {
+            'startTime': 1560329011000,
+            'endTime': 1560329608000,
+            'recType': 2
+        },
+        'alarms': [1560329338000, 1560329406000]
+    }]
+}, {
+    'deviceSerial': 'C90842487',
+    'videos': [{
+        'video': {
+            'startTime': 1560325024000,
+            'endTime': 1560325626000,
+            'recType': 2
+        },
+        'alarms': [1560325120000]
+    }]
+}, {
+    'deviceSerial': 'C90841834',
+    'videos': [{
+        'video': {
+            'startTime': 1560344362000,
+            'endTime': 1560344570000,
+            'recType': 2
+        },
+        'alarms': [1560344563000]
+    }, {
+        'video': {
+            'startTime': 1560352900000,
+            'endTime': 1560353728000,
+            'recType': 2
+        },
+        'alarms': [1560353665000]
+    }, {
+        'video': {
+            'startTime': 1560353749000,
+            'endTime': 1560353775000,
+            'recType': 2
+        },
+        'alarms': [1560353755000]
+    }, {
+        'video': {
+            'startTime': 1560365230000,
+            'endTime': 1560366128000,
+            'recType': 2
+        },
+        'alarms': [1560365534000]
+    }]
+}, {
+    'deviceSerial': 'C90840818',
+    'videos': [{
+        'video': {
+            'startTime': 1560317637000,
+            'endTime': 1560318326000,
+            'recType': 2
+        },
+        'alarms': [1560317803000, 1560317884000, 1560318193000]
+    }, {
+        'video': {
+            'startTime': 1560330369000,
+            'endTime': 1560330883000,
+            'recType': 2
+        },
+        'alarms': [1560330744000]
+    }, {
+        'video': {
+            'startTime': 1560330899000,
+            'endTime': 1560331568000,
+            'recType': 2
+        },
+        'alarms': [1560331269000]
+    }, {
+        'video': {
+            'startTime': 1560337552000,
+            'endTime': 1560337570000,
+            'recType': 2
+        },
+        'alarms': [1560337555000]
+    }]
+}, {
+    'deviceSerial': 'C90840928',
+    'videos': [{
+        'video': {
+            'startTime': 1560383900000,
+            'endTime': 1560384000000,
+            'recType': 2
+        },
+        'alarms': [1560383948000]
+    }]
+}, {
+    'deviceSerial': 'C90841716',
+    'videos': [{
+        'video': {
+            'startTime': 1560383451000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383663000, 1560383904000]
+    }]
+}, {
+    'deviceSerial': 'C90841826',
+    'videos': [{
+        'video': {
+            'startTime': 1560342731000,
+            'endTime': 1560343558000,
+            'recType': 2
+        },
+        'alarms': [1560343307000]
+    }]
+}, {
+    'deviceSerial': 'C90842467',
+    'videos': [{
+        'video': {
+            'startTime': 1560326915000,
+            'endTime': 1560327347000,
+            'recType': 2
+        },
+        'alarms': [1560327277000]
+    }, {
+        'video': {
+            'startTime': 1560327583000,
+            'endTime': 1560327903000,
+            'recType': 2
+        },
+        'alarms': [1560327619000]
+    }, {
+        'video': {
+            'startTime': 1560329088000,
+            'endTime': 1560329140000,
+            'recType': 2
+        },
+        'alarms': [1560329121000]
+    }, {
+        'video': {
+            'startTime': 1560329840000,
+            'endTime': 1560330328000,
+            'recType': 2
+        },
+        'alarms': [1560329940000]
+    }, {
+        'video': {
+            'startTime': 1560331445000,
+            'endTime': 1560331913000,
+            'recType': 2
+        },
+        'alarms': [1560331624000]
+    }, {
+        'video': {
+            'startTime': 1560331936000,
+            'endTime': 1560332176000,
+            'recType': 2
+        },
+        'alarms': [1560331989000, 1560332065000, 1560332146000]
+    }, {
+        'video': {
+            'startTime': 1560345031000,
+            'endTime': 1560345337000,
+            'recType': 2
+        },
+        'alarms': [1560345208000]
+    }]
+}, {
+    'deviceSerial': 'C90842504',
+    'videos': [{
+        'video': {
+            'startTime': 1560333339000,
+            'endTime': 1560333387000,
+            'recType': 2
+        },
+        'alarms': [1560333340000]
+    }]
+}, {
+    'deviceSerial': 'C90841715',
+    'videos': [{
+        'video': {
+            'startTime': 1560328632000,
+            'endTime': 1560329485000,
+            'recType': 2
+        },
+        'alarms': [1560328737000]
+    }]
+}, {
+    'deviceSerial': 'C90842091',
+    'videos': [{
+        'video': {
+            'startTime': 1560327582000,
+            'endTime': 1560328089000,
+            'recType': 2
+        },
+        'alarms': [1560327828000]
+    }]
+}, {
+    'deviceSerial': 'C90842444',
+    'videos': [{
+        'video': {
+            'startTime': 1560326575000,
+            'endTime': 1560326613000,
+            'recType': 2
+        },
+        'alarms': [1560326590000]
+    }, {
+        'video': {
+            'startTime': 1560326625000,
+            'endTime': 1560326828000,
+            'recType': 2
+        },
+        'alarms': [1560326698000, 1560326818000]
+    }, {
+        'video': {
+            'startTime': 1560326828000,
+            'endTime': 1560327481000,
+            'recType': 2
+        },
+        'alarms': [1560326912000, 1560327222000]
+    }, {
+        'video': {
+            'startTime': 1560335918000,
+            'endTime': 1560335930000,
+            'recType': 2
+        },
+        'alarms': [1560335929000]
+    }, {
+        'video': {
+            'startTime': 1560335938000,
+            'endTime': 1560336354000,
+            'recType': 2
+        },
+        'alarms': [1560335990000, 1560336104000, 1560336182000]
+    }]
+}, {
+    'deviceSerial': 'C90842514',
+    'videos': [{
+        'video': {
+            'startTime': 1560383109000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383270000, 1560383340000, 1560383400000, 1560383460000, 1560383520000, 1560383607000, 1560383905000, 1560383965000]
+    }]
+}, {
+    'deviceSerial': 'C90842542',
+    'videos': [{
+        'video': {
+            'startTime': 1560326185000,
+            'endTime': 1560326469000,
+            'recType': 2
+        },
+        'alarms': [1560326252000, 1560326337000, 1560326440000]
+    }, {
+        'video': {
+            'startTime': 1560328567000,
+            'endTime': 1560329007000,
+            'recType': 2
+        },
+        'alarms': [1560328712000, 1560328962000]
+    }, {
+        'video': {
+            'startTime': 1560329089000,
+            'endTime': 1560329137000,
+            'recType': 2
+        },
+        'alarms': [1560329114000]
+    }, {
+        'video': {
+            'startTime': 1560329260000,
+            'endTime': 1560329604000,
+            'recType': 2
+        },
+        'alarms': [1560329307000, 1560329367000, 1560329432000, 1560329500000]
+    }, {
+        'video': {
+            'startTime': 1560330704000,
+            'endTime': 1560330727000,
+            'recType': 2
+        },
+        'alarms': [1560330727000]
+    }, {
+        'video': {
+            'startTime': 1560330727000,
+            'endTime': 1560330739000,
+            'recType': 2
+        },
+        'alarms': [1560330727000]
+    }, {
+        'video': {
+            'startTime': 1560330811000,
+            'endTime': 1560330931000,
+            'recType': 2
+        },
+        'alarms': [1560330891000]
+    }, {
+        'video': {
+            'startTime': 1560331110000,
+            'endTime': 1560331153000,
+            'recType': 2
+        },
+        'alarms': [1560331127000]
+    }, {
+        'video': {
+            'startTime': 1560331368000,
+            'endTime': 1560331519000,
+            'recType': 2
+        },
+        'alarms': [1560331515000]
+    }, {
+        'video': {
+            'startTime': 1560331539000,
+            'endTime': 1560331631000,
+            'recType': 2
+        },
+        'alarms': [1560331611000]
+    }, {
+        'video': {
+            'startTime': 1560331702000,
+            'endTime': 1560331826000,
+            'recType': 2
+        },
+        'alarms': [1560331728000, 1560331791000]
+    }, {
+        'video': {
+            'startTime': 1560331844000,
+            'endTime': 1560331992000,
+            'recType': 2
+        },
+        'alarms': [1560331861000, 1560331922000]
+    }, {
+        'video': {
+            'startTime': 1560333189000,
+            'endTime': 1560333273000,
+            'recType': 2
+        },
+        'alarms': [1560333201000]
+    }, {
+        'video': {
+            'startTime': 1560334397000,
+            'endTime': 1560335056000,
+            'recType': 2
+        },
+        'alarms': [1560334664000]
+    }, {
+        'video': {
+            'startTime': 1560335806000,
+            'endTime': 1560335886000,
+            'recType': 2
+        },
+        'alarms': [1560335881000]
+    }, {
+        'video': {
+            'startTime': 1560336622000,
+            'endTime': 1560336990000,
+            'recType': 2
+        },
+        'alarms': [1560336704000, 1560336764000, 1560336850000]
+    }]
+}, {
+    'deviceSerial': 'C90843473',
+    'videos': [{
+        'video': {
+            'startTime': 1560335673000,
+            'endTime': 1560336554000,
+            'recType': 2
+        },
+        'alarms': [1560336328000, 1560336530000]
+    }]
+}, {
+    'deviceSerial': 'C90843484',
+    'videos': [{
+        'video': {
+            'startTime': 1560326326000,
+            'endTime': 1560326343000,
+            'recType': 2
+        },
+        'alarms': [1560326327000]
+    }, {
+        'video': {
+            'startTime': 1560326383000,
+            'endTime': 1560326599000,
+            'recType': 2
+        },
+        'alarms': [1560326404000, 1560326484000]
+    }, {
+        'video': {
+            'startTime': 1560326615000,
+            'endTime': 1560327155000,
+            'recType': 2
+        },
+        'alarms': [1560326654000, 1560327002000]
+    }, {
+        'video': {
+            'startTime': 1560327251000,
+            'endTime': 1560327427000,
+            'recType': 2
+        },
+        'alarms': [1560327409000]
+    }, {
+        'video': {
+            'startTime': 1560327743000,
+            'endTime': 1560327799000,
+            'recType': 2
+        },
+        'alarms': [1560327758000]
+    }, {
+        'video': {
+            'startTime': 1560327821000,
+            'endTime': 1560327937000,
+            'recType': 2
+        },
+        'alarms': [1560327826000]
+    }, {
+        'video': {
+            'startTime': 1560327955000,
+            'endTime': 1560328103000,
+            'recType': 2
+        },
+        'alarms': [1560328020000]
+    }, {
+        'video': {
+            'startTime': 1560328842000,
+            'endTime': 1560329445000,
+            'recType': 2
+        },
+        'alarms': [1560329026000, 1560329111000, 1560329309000]
+    }, {
+        'video': {
+            'startTime': 1560330871000,
+            'endTime': 1560331023000,
+            'recType': 2
+        },
+        'alarms': [1560330892000, 1560331019000]
+    }, {
+        'video': {
+            'startTime': 1560331042000,
+            'endTime': 1560331816000,
+            'recType': 2
+        },
+        'alarms': [1560331087000, 1560331147000, 1560331207000, 1560331318000, 1560331405000, 1560331581000, 1560331663000, 1560331741000, 1560331804000]
+    }, {
+        'video': {
+            'startTime': 1560331835000,
+            'endTime': 1560332475000,
+            'recType': 2
+        },
+        'alarms': [1560331864000, 1560331924000, 1560331988000, 1560332049000, 1560332113000, 1560332211000]
+    }, {
+        'video': {
+            'startTime': 1560340119000,
+            'endTime': 1560340483000,
+            'recType': 2
+        },
+        'alarms': [1560340212000]
+    }, {
+        'video': {
+            'startTime': 1560341998000,
+            'endTime': 1560342202000,
+            'recType': 2
+        },
+        'alarms': [1560342145000]
+    }, {
+        'video': {
+            'startTime': 1560342202000,
+            'endTime': 1560342855000,
+            'recType': 2
+        },
+        'alarms': [1560342400000, 1560342524000]
+    }, {
+        'video': {
+            'startTime': 1560354585000,
+            'endTime': 1560354629000,
+            'recType': 2
+        },
+        'alarms': [1560354593000]
+    }]
+}, {
+    'deviceSerial': 'C90843620',
+    'videos': [{
+        'video': {
+            'startTime': 1560297601000,
+            'endTime': 1560297929000,
+            'recType': 2
+        },
+        'alarms': [1560297683000, 1560297743000, 1560297810000]
+    }]
+}, {
+    'deviceSerial': 'C90843833',
+    'videos': [{
+        'video': {
+            'startTime': 1560321187000,
+            'endTime': 1560322079000,
+            'recType': 2
+        },
+        'alarms': [1560321581000]
+    }, {
+        'video': {
+            'startTime': 1560329076000,
+            'endTime': 1560329081000,
+            'recType': 2
+        },
+        'alarms': [1560329080000]
+    }, {
+        'video': {
+            'startTime': 1560329135000,
+            'endTime': 1560329170000,
+            'recType': 2
+        },
+        'alarms': [1560329155000]
+    }, {
+        'video': {
+            'startTime': 1560329208000,
+            'endTime': 1560329222000,
+            'recType': 2
+        },
+        'alarms': [1560329222000]
+    }, {
+        'video': {
+            'startTime': 1560329222000,
+            'endTime': 1560329240000,
+            'recType': 2
+        },
+        'alarms': [1560329222000]
+    }, {
+        'video': {
+            'startTime': 1560329955000,
+            'endTime': 1560330412000,
+            'recType': 2
+        },
+        'alarms': [1560330038000]
+    }, {
+        'video': {
+            'startTime': 1560330455000,
+            'endTime': 1560331092000,
+            'recType': 2
+        },
+        'alarms': [1560330686000, 1560330773000]
+    }, {
+        'video': {
+            'startTime': 1560331592000,
+            'endTime': 1560331830000,
+            'recType': 2
+        },
+        'alarms': [1560331652000]
+    }, {
+        'video': {
+            'startTime': 1560331855000,
+            'endTime': 1560331930000,
+            'recType': 2
+        },
+        'alarms': [1560331864000, 1560331924000]
+    }, {
+        'video': {
+            'startTime': 1560331996000,
+            'endTime': 1560332023000,
+            'recType': 2
+        },
+        'alarms': [1560332001000]
+    }, {
+        'video': {
+            'startTime': 1560332152000,
+            'endTime': 1560332195000,
+            'recType': 2
+        },
+        'alarms': [1560332170000]
+    }, {
+        'video': {
+            'startTime': 1560332195000,
+            'endTime': 1560332522000,
+            'recType': 2
+        },
+        'alarms': [1560332263000, 1560332391000]
+    }, {
+        'video': {
+            'startTime': 1560332624000,
+            'endTime': 1560333193000,
+            'recType': 2
+        },
+        'alarms': [1560332724000, 1560332801000, 1560332870000, 1560332988000, 1560333048000, 1560333112000, 1560333172000]
+    }, {
+        'video': {
+            'startTime': 1560333220000,
+            'endTime': 1560333255000,
+            'recType': 2
+        },
+        'alarms': [1560333239000]
+    }, {
+        'video': {
+            'startTime': 1560333282000,
+            'endTime': 1560333593000,
+            'recType': 2
+        },
+        'alarms': [1560333304000, 1560333375000]
+    }, {
+        'video': {
+            'startTime': 1560336885000,
+            'endTime': 1560337539000,
+            'recType': 2
+        },
+        'alarms': [1560337063000]
+    }, {
+        'video': {
+            'startTime': 1560338331000,
+            'endTime': 1560338515000,
+            'recType': 2
+        },
+        'alarms': [1560338333000]
+    }, {
+        'video': {
+            'startTime': 1560338555000,
+            'endTime': 1560338572000,
+            'recType': 2
+        },
+        'alarms': [1560338563000]
+    }, {
+        'video': {
+            'startTime': 1560338837000,
+            'endTime': 1560338862000,
+            'recType': 2
+        },
+        'alarms': [1560338853000]
+    }, {
+        'video': {
+            'startTime': 1560339319000,
+            'endTime': 1560339349000,
+            'recType': 2
+        },
+        'alarms': [1560339349000]
+    }, {
+        'video': {
+            'startTime': 1560339349000,
+            'endTime': 1560339359000,
+            'recType': 2
+        },
+        'alarms': [1560339349000]
+    }, {
+        'video': {
+            'startTime': 1560340365000,
+            'endTime': 1560340966000,
+            'recType': 2
+        },
+        'alarms': [1560340409000, 1560340658000]
+    }, {
+        'video': {
+            'startTime': 1560350408000,
+            'endTime': 1560351245000,
+            'recType': 2
+        },
+        'alarms': [1560350481000]
+    }, {
+        'video': {
+            'startTime': 1560358070000,
+            'endTime': 1560358829000,
+            'recType': 2
+        },
+        'alarms': [1560358472000]
+    }, {
+        'video': {
+            'startTime': 1560358869000,
+            'endTime': 1560359478000,
+            'recType': 2
+        },
+        'alarms': [1560359097000]
+    }, {
+        'video': {
+            'startTime': 1560360825000,
+            'endTime': 1560360964000,
+            'recType': 2
+        },
+        'alarms': [1560360911000]
+    }, {
+        'video': {
+            'startTime': 1560367373000,
+            'endTime': 1560367646000,
+            'recType': 2
+        },
+        'alarms': [1560367395000]
+    }, {
+        'video': {
+            'startTime': 1560378670000,
+            'endTime': 1560379274000,
+            'recType': 2
+        },
+        'alarms': [1560378979000]
+    }]
+}, {
+    'deviceSerial': 'C90843157',
+    'videos': [{
+        'video': {
+            'startTime': 1560331020000,
+            'endTime': 1560331126000,
+            'recType': 2
+        },
+        'alarms': [1560331088000]
+    }, {
+        'video': {
+            'startTime': 1560331126000,
+            'endTime': 1560331154000,
+            'recType': 2
+        },
+        'alarms': [1560331149000]
+    }, {
+        'video': {
+            'startTime': 1560331181000,
+            'endTime': 1560331342000,
+            'recType': 2
+        },
+        'alarms': [1560331268000, 1560331333000]
+    }, {
+        'video': {
+            'startTime': 1560340401000,
+            'endTime': 1560340614000,
+            'recType': 2
+        },
+        'alarms': [1560340533000, 1560340593000]
+    }]
+}, {
+    'deviceSerial': 'C90843476',
+    'videos': [{
+        'video': {
+            'startTime': 1560325009000,
+            'endTime': 1560325027000,
+            'recType': 2
+        },
+        'alarms': [1560325017000]
+    }, {
+        'video': {
+            'startTime': 1560325087000,
+            'endTime': 1560325651000,
+            'recType': 2
+        },
+        'alarms': [1560325643000]
+    }, {
+        'video': {
+            'startTime': 1560325668000,
+            'endTime': 1560325955000,
+            'recType': 2
+        },
+        'alarms': [1560325711000]
+    }, {
+        'video': {
+            'startTime': 1560325984000,
+            'endTime': 1560326368000,
+            'recType': 2
+        },
+        'alarms': [1560326006000, 1560326097000, 1560326157000, 1560326350000]
+    }, {
+        'video': {
+            'startTime': 1560326385000,
+            'endTime': 1560326832000,
+            'recType': 2
+        },
+        'alarms': [1560326472000, 1560326629000]
+    }, {
+        'video': {
+            'startTime': 1560326861000,
+            'endTime': 1560327325000,
+            'recType': 2
+        },
+        'alarms': [1560326882000, 1560326942000, 1560327002000, 1560327169000]
+    }, {
+        'video': {
+            'startTime': 1560327377000,
+            'endTime': 1560327737000,
+            'recType': 2
+        },
+        'alarms': [1560327441000]
+    }, {
+        'video': {
+            'startTime': 1560327754000,
+            'endTime': 1560328030000,
+            'recType': 2
+        },
+        'alarms': [1560327884000, 1560327964000]
+    }, {
+        'video': {
+            'startTime': 1560328154000,
+            'endTime': 1560328171000,
+            'recType': 2
+        },
+        'alarms': [1560328160000]
+    }, {
+        'video': {
+            'startTime': 1560328189000,
+            'endTime': 1560328459000,
+            'recType': 2
+        },
+        'alarms': [1560328329000]
+    }, {
+        'video': {
+            'startTime': 1560328484000,
+            'endTime': 1560328667000,
+            'recType': 2
+        },
+        'alarms': [1560328607000]
+    }, {
+        'video': {
+            'startTime': 1560328667000,
+            'endTime': 1560328686000,
+            'recType': 2
+        },
+        'alarms': [1560328679000]
+    }, {
+        'video': {
+            'startTime': 1560328757000,
+            'endTime': 1560328820000,
+            'recType': 2
+        },
+        'alarms': [1560328792000]
+    }, {
+        'video': {
+            'startTime': 1560328966000,
+            'endTime': 1560328992000,
+            'recType': 2
+        },
+        'alarms': [1560328981000]
+    }, {
+        'video': {
+            'startTime': 1560329017000,
+            'endTime': 1560329132000,
+            'recType': 2
+        },
+        'alarms': [1560329041000, 1560329111000]
+    }, {
+        'video': {
+            'startTime': 1560329158000,
+            'endTime': 1560329293000,
+            'recType': 2
+        },
+        'alarms': [1560329171000, 1560329270000]
+    }, {
+        'video': {
+            'startTime': 1560330162000,
+            'endTime': 1560330191000,
+            'recType': 2
+        },
+        'alarms': [1560330164000]
+    }, {
+        'video': {
+            'startTime': 1560330472000,
+            'endTime': 1560330490000,
+            'recType': 2
+        },
+        'alarms': [1560330485000]
+    }, {
+        'video': {
+            'startTime': 1560330848000,
+            'endTime': 1560330913000,
+            'recType': 2
+        },
+        'alarms': [1560330860000]
+    }, {
+        'video': {
+            'startTime': 1560331130000,
+            'endTime': 1560331146000,
+            'recType': 2
+        },
+        'alarms': [1560331139000]
+    }, {
+        'video': {
+            'startTime': 1560331500000,
+            'endTime': 1560331532000,
+            'recType': 2
+        },
+        'alarms': [1560331511000]
+    }, {
+        'video': {
+            'startTime': 1560331748000,
+            'endTime': 1560331820000,
+            'recType': 2
+        },
+        'alarms': [1560331807000]
+    }, {
+        'video': {
+            'startTime': 1560332001000,
+            'endTime': 1560332117000,
+            'recType': 2
+        },
+        'alarms': [1560332010000, 1560332096000]
+    }, {
+        'video': {
+            'startTime': 1560332149000,
+            'endTime': 1560332171000,
+            'recType': 2
+        },
+        'alarms': [1560332166000]
+    }, {
+        'video': {
+            'startTime': 1560332226000,
+            'endTime': 1560332278000,
+            'recType': 2
+        },
+        'alarms': [1560332270000]
+    }, {
+        'video': {
+            'startTime': 1560332348000,
+            'endTime': 1560332358000,
+            'recType': 2
+        },
+        'alarms': [1560332357000]
+    }, {
+        'video': {
+            'startTime': 1560332429000,
+            'endTime': 1560332471000,
+            'recType': 2
+        },
+        'alarms': [1560332442000]
+    }, {
+        'video': {
+            'startTime': 1560332579000,
+            'endTime': 1560332667000,
+            'recType': 2
+        },
+        'alarms': [1560332621000]
+    }]
+}, {
+    'deviceSerial': 'C90843663',
+    'videos': [{
+        'video': {
+            'startTime': 1560330144000,
+            'endTime': 1560330588000,
+            'recType': 2
+        },
+        'alarms': [1560330386000, 1560330446000]
+    }, {
+        'video': {
+            'startTime': 1560331096000,
+            'endTime': 1560331169000,
+            'recType': 2
+        },
+        'alarms': [1560331131000]
+    }, {
+        'video': {
+            'startTime': 1560332502000,
+            'endTime': 1560333271000,
+            'recType': 2
+        },
+        'alarms': [1560333191000]
+    }, {
+        'video': {
+            'startTime': 1560333271000,
+            'endTime': 1560333296000,
+            'recType': 2
+        },
+        'alarms': [1560333281000]
+    }, {
+        'video': {
+            'startTime': 1560333325000,
+            'endTime': 1560333347000,
+            'recType': 2
+        },
+        'alarms': [1560333341000]
+    }, {
+        'video': {
+            'startTime': 1560344159000,
+            'endTime': 1560344189000,
+            'recType': 2
+        },
+        'alarms': [1560344160000]
+    }]
+}, {
+    'deviceSerial': 'C90843689',
+    'videos': [{
+        'video': {
+            'startTime': 1560327994000,
+            'endTime': 1560328479000,
+            'recType': 2
+        },
+        'alarms': [1560328064000, 1560328125000, 1560328185000, 1560328245000, 1560328305000, 1560328369000, 1560328429000]
+    }, {
+        'video': {
+            'startTime': 1560328479000,
+            'endTime': 1560328502000,
+            'recType': 2
+        },
+        'alarms': [1560328489000]
+    }]
+}, {
+    'deviceSerial': 'C90843715',
+    'videos': [{
+        'video': {
+            'startTime': 1560335007000,
+            'endTime': 1560335832000,
+            'recType': 2
+        },
+        'alarms': [1560335755000]
+    }, {
+        'video': {
+            'startTime': 1560335832000,
+            'endTime': 1560335849000,
+            'recType': 2
+        },
+        'alarms': [1560335841000]
+    }, {
+        'video': {
+            'startTime': 1560335849000,
+            'endTime': 1560335968000,
+            'recType': 2
+        },
+        'alarms': [1560335908000, 1560335968000]
+    }, {
+        'video': {
+            'startTime': 1560335968000,
+            'endTime': 1560335984000,
+            'recType': 2
+        },
+        'alarms': [1560335968000]
+    }, {
+        'video': {
+            'startTime': 1560339871000,
+            'endTime': 1560340739000,
+            'recType': 2
+        },
+        'alarms': [1560340110000]
+    }]
+}, {
+    'deviceSerial': 'C90843803',
+    'videos': [{
+        'video': {
+            'startTime': 1560326937000,
+            'endTime': 1560327162000,
+            'recType': 2
+        },
+        'alarms': [1560327019000]
+    }, {
+        'video': {
+            'startTime': 1560327217000,
+            'endTime': 1560327662000,
+            'recType': 2
+        },
+        'alarms': [1560327618000]
+    }, {
+        'video': {
+            'startTime': 1560327839000,
+            'endTime': 1560328003000,
+            'recType': 2
+        },
+        'alarms': [1560327953000]
+    }, {
+        'video': {
+            'startTime': 1560328003000,
+            'endTime': 1560328363000,
+            'recType': 2
+        },
+        'alarms': [1560328090000, 1560328150000, 1560328219000]
+    }, {
+        'video': {
+            'startTime': 1560328531000,
+            'endTime': 1560328542000,
+            'recType': 2
+        },
+        'alarms': [1560328537000]
+    }, {
+        'video': {
+            'startTime': 1560328556000,
+            'endTime': 1560329172000,
+            'recType': 2
+        },
+        'alarms': [1560328627000, 1560328952000, 1560329145000]
+    }, {
+        'video': {
+            'startTime': 1560329204000,
+            'endTime': 1560329266000,
+            'recType': 2
+        },
+        'alarms': [1560329266000]
+    }, {
+        'video': {
+            'startTime': 1560329266000,
+            'endTime': 1560329271000,
+            'recType': 2
+        },
+        'alarms': [1560329266000]
+    }]
+}, {
+    'deviceSerial': 'C90843807',
+    'videos': [{
+        'video': {
+            'startTime': 1560329541000,
+            'endTime': 1560329678000,
+            'recType': 2
+        },
+        'alarms': [1560329652000]
+    }, {
+        'video': {
+            'startTime': 1560329706000,
+            'endTime': 1560329791000,
+            'recType': 2
+        },
+        'alarms': [1560329722000]
+    }, {
+        'video': {
+            'startTime': 1560330226000,
+            'endTime': 1560331047000,
+            'recType': 2
+        },
+        'alarms': [1560330847000]
+    }, {
+        'video': {
+            'startTime': 1560331766000,
+            'endTime': 1560332006000,
+            'recType': 2
+        },
+        'alarms': [1560331920000]
+    }]
+}, {
+    'deviceSerial': 'C90843821',
+    'videos': [{
+        'video': {
+            'startTime': 1560328197000,
+            'endTime': 1560328522000,
+            'recType': 2
+        },
+        'alarms': [1560328382000, 1560328448000]
+    }, {
+        'video': {
+            'startTime': 1560328627000,
+            'endTime': 1560328660000,
+            'recType': 2
+        },
+        'alarms': [1560328647000]
+    }, {
+        'video': {
+            'startTime': 1560328703000,
+            'endTime': 1560328717000,
+            'recType': 2
+        },
+        'alarms': [1560328713000]
+    }, {
+        'video': {
+            'startTime': 1560328717000,
+            'endTime': 1560329059000,
+            'recType': 2
+        },
+        'alarms': [1560328777000, 1560328837000, 1560328912000, 1560328973000, 1560329033000]
+    }, {
+        'video': {
+            'startTime': 1560383112000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383176000, 1560383255000]
+    }]
+}, {
+    'deviceSerial': 'C90843471',
+    'videos': [{
+        'video': {
+            'startTime': 1560327858000,
+            'endTime': 1560327906000,
+            'recType': 2
+        },
+        'alarms': [1560327860000]
+    }, {
+        'video': {
+            'startTime': 1560327929000,
+            'endTime': 1560328120000,
+            'recType': 2
+        },
+        'alarms': [1560327962000]
+    }, {
+        'video': {
+            'startTime': 1560328120000,
+            'endTime': 1560328748000,
+            'recType': 2
+        },
+        'alarms': [1560328283000, 1560328343000, 1560328404000, 1560328477000, 1560328638000, 1560328698000]
+    }]
+}, {
+    'deviceSerial': 'C90843475',
+    'videos': [{
+        'video': {
+            'startTime': 1560329875000,
+            'endTime': 1560329922000,
+            'recType': 2
+        },
+        'alarms': [1560329911000]
+    }, {
+        'video': {
+            'startTime': 1560329951000,
+            'endTime': 1560330135000,
+            'recType': 2
+        },
+        'alarms': [1560330022000, 1560330089000]
+    }, {
+        'video': {
+            'startTime': 1560330135000,
+            'endTime': 1560330191000,
+            'recType': 2
+        },
+        'alarms': [1560330158000]
+    }]
+}, {
+    'deviceSerial': 'C90843486',
+    'videos': [{
+        'video': {
+            'startTime': 1560300576000,
+            'endTime': 1560301475000,
+            'recType': 2
+        },
+        'alarms': [1560300691000]
+    }, {
+        'video': {
+            'startTime': 1560303479000,
+            'endTime': 1560303867000,
+            'recType': 2
+        },
+        'alarms': [1560303511000]
+    }, {
+        'video': {
+            'startTime': 1560303867000,
+            'endTime': 1560304036000,
+            'recType': 2
+        },
+        'alarms': [1560303920000, 1560303995000]
+    }, {
+        'video': {
+            'startTime': 1560304056000,
+            'endTime': 1560304072000,
+            'recType': 2
+        },
+        'alarms': [1560304063000]
+    }, {
+        'video': {
+            'startTime': 1560304084000,
+            'endTime': 1560304192000,
+            'recType': 2
+        },
+        'alarms': [1560304134000]
+    }, {
+        'video': {
+            'startTime': 1560306704000,
+            'endTime': 1560306721000,
+            'recType': 2
+        },
+        'alarms': [1560306709000]
+    }, {
+        'video': {
+            'startTime': 1560308831000,
+            'endTime': 1560309510000,
+            'recType': 2
+        },
+        'alarms': [1560309174000]
+    }, {
+        'video': {
+            'startTime': 1560312961000,
+            'endTime': 1560313533000,
+            'recType': 2
+        },
+        'alarms': [1560313485000]
+    }, {
+        'video': {
+            'startTime': 1560325445000,
+            'endTime': 1560326096000,
+            'recType': 2
+        },
+        'alarms': [1560326003000]
+    }, {
+        'video': {
+            'startTime': 1560326333000,
+            'endTime': 1560326369000,
+            'recType': 2
+        },
+        'alarms': [1560326366000]
+    }]
+}, {
+    'deviceSerial': 'C90843493',
+    'videos': [{
+        'video': {
+            'startTime': 1560333001000,
+            'endTime': 1560333763000,
+            'recType': 2
+        },
+        'alarms': [1560333465000, 1560333540000]
+    }, {
+        'video': {
+            'startTime': 1560333763000,
+            'endTime': 1560333779000,
+            'recType': 2
+        },
+        'alarms': [1560333770000]
+    }, {
+        'video': {
+            'startTime': 1560333779000,
+            'endTime': 1560334135000,
+            'recType': 2
+        },
+        'alarms': [1560334119000]
+    }, {
+        'video': {
+            'startTime': 1560334135000,
+            'endTime': 1560334687000,
+            'recType': 2
+        },
+        'alarms': [1560334609000]
+    }, {
+        'video': {
+            'startTime': 1560334712000,
+            'endTime': 1560334728000,
+            'recType': 2
+        },
+        'alarms': [1560334716000]
+    }]
+}, {
+    'deviceSerial': 'C90843589',
+    'videos': [{
+        'video': {
+            'startTime': 1560332394000,
+            'endTime': 1560332738000,
+            'recType': 2
+        },
+        'alarms': [1560332528000, 1560332621000, 1560332694000]
+    }, {
+        'video': {
+            'startTime': 1560332738000,
+            'endTime': 1560332782000,
+            'recType': 2
+        },
+        'alarms': [1560332754000]
+    }, {
+        'video': {
+            'startTime': 1560332782000,
+            'endTime': 1560332842000,
+            'recType': 2
+        },
+        'alarms': [1560332836000]
+    }, {
+        'video': {
+            'startTime': 1560332846000,
+            'endTime': 1560333021000,
+            'recType': 2
+        },
+        'alarms': [1560332901000, 1560332961000]
+    }, {
+        'video': {
+            'startTime': 1560333021000,
+            'endTime': 1560333022000,
+            'recType': 2
+        },
+        'alarms': [1560333022000]
+    }, {
+        'video': {
+            'startTime': 1560333022000,
+            'endTime': 1560333039000,
+            'recType': 2
+        },
+        'alarms': [1560333022000]
+    }, {
+        'video': {
+            'startTime': 1560333070000,
+            'endTime': 1560333146000,
+            'recType': 2
+        },
+        'alarms': [1560333094000]
+    }, {
+        'video': {
+            'startTime': 1560333147000,
+            'endTime': 1560333330000,
+            'recType': 2
+        },
+        'alarms': [1560333155000]
+    }, {
+        'video': {
+            'startTime': 1560333363000,
+            'endTime': 1560333405000,
+            'recType': 2
+        },
+        'alarms': [1560333364000]
+    }, {
+        'video': {
+            'startTime': 1560333447000,
+            'endTime': 1560333461000,
+            'recType': 2
+        },
+        'alarms': [1560333448000]
+    }, {
+        'video': {
+            'startTime': 1560333652000,
+            'endTime': 1560333735000,
+            'recType': 2
+        },
+        'alarms': [1560333657000, 1560333722000]
+    }, {
+        'video': {
+            'startTime': 1560333736000,
+            'endTime': 1560333852000,
+            'recType': 2
+        },
+        'alarms': [1560333782000]
+    }, {
+        'video': {
+            'startTime': 1560333856000,
+            'endTime': 1560334167000,
+            'recType': 2
+        },
+        'alarms': [1560333869000]
+    }, {
+        'video': {
+            'startTime': 1560334180000,
+            'endTime': 1560334303000,
+            'recType': 2
+        },
+        'alarms': [1560334281000]
+    }, {
+        'video': {
+            'startTime': 1560334523000,
+            'endTime': 1560334616000,
+            'recType': 2
+        },
+        'alarms': [1560334526000, 1560334591000]
+    }, {
+        'video': {
+            'startTime': 1560334741000,
+            'endTime': 1560334761000,
+            'recType': 2
+        },
+        'alarms': [1560334748000]
+    }, {
+        'video': {
+            'startTime': 1560334764000,
+            'endTime': 1560334847000,
+            'recType': 2
+        },
+        'alarms': [1560334823000]
+    }, {
+        'video': {
+            'startTime': 1560335001000,
+            'endTime': 1560335072000,
+            'recType': 2
+        },
+        'alarms': [1560335008000]
+    }, {
+        'video': {
+            'startTime': 1560335078000,
+            'endTime': 1560335092000,
+            'recType': 2
+        },
+        'alarms': [1560335081000]
+    }, {
+        'video': {
+            'startTime': 1560335166000,
+            'endTime': 1560335189000,
+            'recType': 2
+        },
+        'alarms': [1560335183000]
+    }, {
+        'video': {
+            'startTime': 1560335202000,
+            'endTime': 1560335284000,
+            'recType': 2
+        },
+        'alarms': [1560335243000]
+    }, {
+        'video': {
+            'startTime': 1560335294000,
+            'endTime': 1560335336000,
+            'recType': 2
+        },
+        'alarms': [1560335303000]
+    }, {
+        'video': {
+            'startTime': 1560335462000,
+            'endTime': 1560335634000,
+            'recType': 2
+        },
+        'alarms': [1560335482000, 1560335544000]
+    }, {
+        'video': {
+            'startTime': 1560335771000,
+            'endTime': 1560335799000,
+            'recType': 2
+        },
+        'alarms': [1560335792000]
+    }, {
+        'video': {
+            'startTime': 1560335888000,
+            'endTime': 1560335956000,
+            'recType': 2
+        },
+        'alarms': [1560335948000]
+    }, {
+        'video': {
+            'startTime': 1560336473000,
+            'endTime': 1560336562000,
+            'recType': 2
+        },
+        'alarms': [1560336488000]
+    }, {
+        'video': {
+            'startTime': 1560336562000,
+            'endTime': 1560336573000,
+            'recType': 2
+        },
+        'alarms': [1560336565000]
+    }, {
+        'video': {
+            'startTime': 1560336632000,
+            'endTime': 1560336662000,
+            'recType': 2
+        },
+        'alarms': [1560336647000]
+    }, {
+        'video': {
+            'startTime': 1560336786000,
+            'endTime': 1560336919000,
+            'recType': 2
+        },
+        'alarms': [1560336874000]
+    }, {
+        'video': {
+            'startTime': 1560337575000,
+            'endTime': 1560337597000,
+            'recType': 2
+        },
+        'alarms': [1560337596000]
+    }, {
+        'video': {
+            'startTime': 1560337645000,
+            'endTime': 1560337685000,
+            'recType': 2
+        },
+        'alarms': [1560337666000]
+    }, {
+        'video': {
+            'startTime': 1560337825000,
+            'endTime': 1560338070000,
+            'recType': 2
+        },
+        'alarms': [1560337928000, 1560338007000]
+    }, {
+        'video': {
+            'startTime': 1560339547000,
+            'endTime': 1560339970000,
+            'recType': 2
+        },
+        'alarms': [1560339566000]
+    }, {
+        'video': {
+            'startTime': 1560341642000,
+            'endTime': 1560341870000,
+            'recType': 2
+        },
+        'alarms': [1560341855000]
+    }, {
+        'video': {
+            'startTime': 1560342701000,
+            'endTime': 1560343457000,
+            'recType': 2
+        },
+        'alarms': [1560342861000]
+    }, {
+        'video': {
+            'startTime': 1560343583000,
+            'endTime': 1560344050000,
+            'recType': 2
+        },
+        'alarms': [1560343800000]
+    }, {
+        'video': {
+            'startTime': 1560361447000,
+            'endTime': 1560361487000,
+            'recType': 2
+        },
+        'alarms': [1560361473000]
+    }, {
+        'video': {
+            'startTime': 1560364768000,
+            'endTime': 1560365280000,
+            'recType': 2
+        },
+        'alarms': [1560364903000]
+    }, {
+        'video': {
+            'startTime': 1560367027000,
+            'endTime': 1560367806000,
+            'recType': 2
+        },
+        'alarms': [1560367166000]
+    }]
+}, {
+    'deviceSerial': 'C90843611',
+    'videos': [{
+        'video': {
+            'startTime': 1560329430000,
+            'endTime': 1560329938000,
+            'recType': 2
+        },
+        'alarms': [1560329564000, 1560329646000, 1560329757000]
+    }, {
+        'video': {
+            'startTime': 1560345232000,
+            'endTime': 1560345248000,
+            'recType': 2
+        },
+        'alarms': [1560345234000]
+    }, {
+        'video': {
+            'startTime': 1560345291000,
+            'endTime': 1560345761000,
+            'recType': 2
+        },
+        'alarms': [1560345339000]
+    }, {
+        'video': {
+            'startTime': 1560373301000,
+            'endTime': 1560373813000,
+            'recType': 2
+        },
+        'alarms': [1560373437000]
+    }]
+}, {
+    'deviceSerial': 'C90843626',
+    'videos': [{
+        'video': {
+            'startTime': 1560330972000,
+            'endTime': 1560331101000,
+            'recType': 2
+        },
+        'alarms': [1560331092000]
+    }, {
+        'video': {
+            'startTime': 1560331107000,
+            'endTime': 1560331263000,
+            'recType': 2
+        },
+        'alarms': [1560331182000]
+    }, {
+        'video': {
+            'startTime': 1560331418000,
+            'endTime': 1560331423000,
+            'recType': 2
+        },
+        'alarms': [1560331423000]
+    }, {
+        'video': {
+            'startTime': 1560331423000,
+            'endTime': 1560331432000,
+            'recType': 2
+        },
+        'alarms': [1560331423000]
+    }, {
+        'video': {
+            'startTime': 1560331456000,
+            'endTime': 1560331505000,
+            'recType': 2
+        },
+        'alarms': [1560331483000]
+    }, {
+        'video': {
+            'startTime': 1560331572000,
+            'endTime': 1560331595000,
+            'recType': 2
+        },
+        'alarms': [1560331578000]
+    }, {
+        'video': {
+            'startTime': 1560331618000,
+            'endTime': 1560331689000,
+            'recType': 2
+        },
+        'alarms': [1560331641000]
+    }, {
+        'video': {
+            'startTime': 1560331689000,
+            'endTime': 1560331713000,
+            'recType': 2
+        },
+        'alarms': [1560331708000]
+    }, {
+        'video': {
+            'startTime': 1560331757000,
+            'endTime': 1560331809000,
+            'recType': 2
+        },
+        'alarms': [1560331768000]
+    }, {
+        'video': {
+            'startTime': 1560331825000,
+            'endTime': 1560331974000,
+            'recType': 2
+        },
+        'alarms': [1560331828000, 1560331919000]
+    }, {
+        'video': {
+            'startTime': 1560331974000,
+            'endTime': 1560332001000,
+            'recType': 2
+        },
+        'alarms': [1560331979000]
+    }, {
+        'video': {
+            'startTime': 1560332001000,
+            'endTime': 1560332086000,
+            'recType': 2
+        },
+        'alarms': [1560332039000]
+    }, {
+        'video': {
+            'startTime': 1560332086000,
+            'endTime': 1560332101000,
+            'recType': 2
+        },
+        'alarms': [1560332099000]
+    }, {
+        'video': {
+            'startTime': 1560332162000,
+            'endTime': 1560332234000,
+            'recType': 2
+        },
+        'alarms': [1560332189000]
+    }, {
+        'video': {
+            'startTime': 1560332258000,
+            'endTime': 1560332379000,
+            'recType': 2
+        },
+        'alarms': [1560332279000, 1560332344000]
+    }, {
+        'video': {
+            'startTime': 1560332398000,
+            'endTime': 1560332755000,
+            'recType': 2
+        },
+        'alarms': [1560332404000, 1560332494000, 1560332585000, 1560332645000, 1560332735000]
+    }, {
+        'video': {
+            'startTime': 1560332771000,
+            'endTime': 1560333053000,
+            'recType': 2
+        },
+        'alarms': [1560332811000, 1560332871000, 1560332960000, 1560333020000]
+    }, {
+        'video': {
+            'startTime': 1560333055000,
+            'endTime': 1560333490000,
+            'recType': 2
+        },
+        'alarms': [1560333081000, 1560333141000, 1560333214000, 1560333279000]
+    }, {
+        'video': {
+            'startTime': 1560333632000,
+            'endTime': 1560333928000,
+            'recType': 2
+        },
+        'alarms': [1560333736000]
+    }, {
+        'video': {
+            'startTime': 1560333928000,
+            'endTime': 1560334052000,
+            'recType': 2
+        },
+        'alarms': [1560334034000]
+    }, {
+        'video': {
+            'startTime': 1560334129000,
+            'endTime': 1560334150000,
+            'recType': 2
+        },
+        'alarms': [1560334144000]
+    }, {
+        'video': {
+            'startTime': 1560334173000,
+            'endTime': 1560334359000,
+            'recType': 2
+        },
+        'alarms': [1560334231000, 1560334291000, 1560334351000]
+    }, {
+        'video': {
+            'startTime': 1560334363000,
+            'endTime': 1560334427000,
+            'recType': 2
+        },
+        'alarms': [1560334411000]
+    }, {
+        'video': {
+            'startTime': 1560334489000,
+            'endTime': 1560334513000,
+            'recType': 2
+        },
+        'alarms': [1560334501000]
+    }, {
+        'video': {
+            'startTime': 1560334513000,
+            'endTime': 1560335114000,
+            'recType': 2
+        },
+        'alarms': [1560334678000, 1560334738000, 1560334835000]
+    }, {
+        'video': {
+            'startTime': 1560335114000,
+            'endTime': 1560335135000,
+            'recType': 2
+        },
+        'alarms': [1560335121000]
+    }, {
+        'video': {
+            'startTime': 1560335135000,
+            'endTime': 1560335735000,
+            'recType': 2
+        },
+        'alarms': [1560335362000, 1560335544000]
+    }, {
+        'video': {
+            'startTime': 1560335843000,
+            'endTime': 1560335872000,
+            'recType': 2
+        },
+        'alarms': [1560335853000]
+    }, {
+        'video': {
+            'startTime': 1560336004000,
+            'endTime': 1560336190000,
+            'recType': 2
+        },
+        'alarms': [1560336151000]
+    }, {
+        'video': {
+            'startTime': 1560336228000,
+            'endTime': 1560336421000,
+            'recType': 2
+        },
+        'alarms': [1560336367000]
+    }, {
+        'video': {
+            'startTime': 1560336424000,
+            'endTime': 1560336472000,
+            'recType': 2
+        },
+        'alarms': [1560336456000]
+    }, {
+        'video': {
+            'startTime': 1560336905000,
+            'endTime': 1560336960000,
+            'recType': 2
+        },
+        'alarms': [1560336947000]
+    }]
+}, {
+    'deviceSerial': 'C90843633',
+    'videos': [{
+        'video': {
+            'startTime': 1560324480000,
+            'endTime': 1560325169000,
+            'recType': 2
+        },
+        'alarms': [1560324576000, 1560324642000, 1560324709000, 1560324789000, 1560324878000]
+    }, {
+        'video': {
+            'startTime': 1560339998000,
+            'endTime': 1560340243000,
+            'recType': 2
+        },
+        'alarms': [1560340189000]
+    }]
+}, {
+    'deviceSerial': 'C90843677',
+    'videos': [{
+        'video': {
+            'startTime': 1560337001000,
+            'endTime': 1560337886000,
+            'recType': 2
+        },
+        'alarms': [1560337169000, 1560337241000, 1560337407000, 1560337486000]
+    }, {
+        'video': {
+            'startTime': 1560339369000,
+            'endTime': 1560340032000,
+            'recType': 2
+        },
+        'alarms': [1560339614000, 1560339674000, 1560339735000]
+    }, {
+        'video': {
+            'startTime': 1560347435000,
+            'endTime': 1560348207000,
+            'recType': 2
+        },
+        'alarms': [1560348191000]
+    }]
+}, {
+    'deviceSerial': 'C90843783',
+    'videos': [{
+        'video': {
+            'startTime': 1560327092000,
+            'endTime': 1560327152000,
+            'recType': 2
+        },
+        'alarms': [1560327112000]
+    }, {
+        'video': {
+            'startTime': 1560327179000,
+            'endTime': 1560327949000,
+            'recType': 2
+        },
+        'alarms': [1560327349000]
+    }, {
+        'video': {
+            'startTime': 1560327949000,
+            'endTime': 1560328653000,
+            'recType': 2
+        },
+        'alarms': [1560328609000]
+    }, {
+        'video': {
+            'startTime': 1560328653000,
+            'endTime': 1560328690000,
+            'recType': 2
+        },
+        'alarms': [1560328686000]
+    }, {
+        'video': {
+            'startTime': 1560329166000,
+            'endTime': 1560329185000,
+            'recType': 2
+        },
+        'alarms': [1560329175000]
+    }, {
+        'video': {
+            'startTime': 1560329834000,
+            'endTime': 1560330620000,
+            'recType': 2
+        },
+        'alarms': [1560330010000, 1560330443000]
+    }]
+}, {
+    'deviceSerial': 'C90843485',
+    'videos': [{
+        'video': {
+            'startTime': 1560337178000,
+            'endTime': 1560337843000,
+            'recType': 2
+        },
+        'alarms': [1560337254000]
+    }, {
+        'video': {
+            'startTime': 1560337861000,
+            'endTime': 1560338020000,
+            'recType': 2
+        },
+        'alarms': [1560337991000]
+    }, {
+        'video': {
+            'startTime': 1560338035000,
+            'endTime': 1560338283000,
+            'recType': 2
+        },
+        'alarms': [1560338053000, 1560338281000]
+    }, {
+        'video': {
+            'startTime': 1560338304000,
+            'endTime': 1560338456000,
+            'recType': 2
+        },
+        'alarms': [1560338435000]
+    }, {
+        'video': {
+            'startTime': 1560340342000,
+            'endTime': 1560340999000,
+            'recType': 2
+        },
+        'alarms': [1560340561000, 1560340683000, 1560340768000, 1560340918000]
+    }, {
+        'video': {
+            'startTime': 1560342767000,
+            'endTime': 1560343383000,
+            'recType': 2
+        },
+        'alarms': [1560343316000]
+    }]
+}, {
+    'deviceSerial': 'C90843625',
+    'videos': [{
+        'video': {
+            'startTime': 1560297601000,
+            'endTime': 1560298310000,
+            'recType': 2
+        },
+        'alarms': [1560297716000, 1560298027000]
+    }, {
+        'video': {
+            'startTime': 1560333894000,
+            'endTime': 1560334552000,
+            'recType': 2
+        },
+        'alarms': [1560333973000, 1560334067000, 1560334148000, 1560334299000]
+    }, {
+        'video': {
+            'startTime': 1560335946000,
+            'endTime': 1560336242000,
+            'recType': 2
+        },
+        'alarms': [1560336155000]
+    }, {
+        'video': {
+            'startTime': 1560336546000,
+            'endTime': 1560337364000,
+            'recType': 2
+        },
+        'alarms': [1560336630000, 1560336893000]
+    }]
+}, {
+    'deviceSerial': 'C90843728',
+    'videos': [{
+        'video': {
+            'startTime': 1560302468000,
+            'endTime': 1560303300000,
+            'recType': 2
+        },
+        'alarms': [1560303027000]
+    }, {
+        'video': {
+            'startTime': 1560322463000,
+            'endTime': 1560323207000,
+            'recType': 2
+        },
+        'alarms': [1560322677000, 1560323054000]
+    }, {
+        'video': {
+            'startTime': 1560323223000,
+            'endTime': 1560323603000,
+            'recType': 2
+        },
+        'alarms': [1560323358000]
+    }, {
+        'video': {
+            'startTime': 1560325374000,
+            'endTime': 1560326046000,
+            'recType': 2
+        },
+        'alarms': [1560325750000, 1560325830000]
+    }, {
+        'video': {
+            'startTime': 1560327164000,
+            'endTime': 1560327196000,
+            'recType': 2
+        },
+        'alarms': [1560327172000]
+    }, {
+        'video': {
+            'startTime': 1560329073000,
+            'endTime': 1560329233000,
+            'recType': 2
+        },
+        'alarms': [1560329135000, 1560329207000]
+    }, {
+        'video': {
+            'startTime': 1560329490000,
+            'endTime': 1560329511000,
+            'recType': 2
+        },
+        'alarms': [1560329505000]
+    }, {
+        'video': {
+            'startTime': 1560334389000,
+            'endTime': 1560334420000,
+            'recType': 2
+        },
+        'alarms': [1560334401000]
+    }, {
+        'video': {
+            'startTime': 1560363212000,
+            'endTime': 1560363896000,
+            'recType': 2
+        },
+        'alarms': [1560363418000]
+    }, {
+        'video': {
+            'startTime': 1560366250000,
+            'endTime': 1560366870000,
+            'recType': 2
+        },
+        'alarms': [1560366435000]
+    }]
+}, {
+    'deviceSerial': 'C90843809',
+    'videos': [{
+        'video': {
+            'startTime': 1560330289000,
+            'endTime': 1560330315000,
+            'recType': 2
+        },
+        'alarms': [1560330302000]
+    }, {
+        'video': {
+            'startTime': 1560330315000,
+            'endTime': 1560330818000,
+            'recType': 2
+        },
+        'alarms': [1560330381000, 1560330521000, 1560330627000, 1560330687000]
+    }, {
+        'video': {
+            'startTime': 1560330836000,
+            'endTime': 1560330898000,
+            'recType': 2
+        },
+        'alarms': [1560330838000, 1560330898000]
+    }, {
+        'video': {
+            'startTime': 1560330898000,
+            'endTime': 1560331390000,
+            'recType': 2
+        },
+        'alarms': [1560330898000, 1560330991000, 1560331069000, 1560331132000, 1560331251000, 1560331331000]
+    }, {
+        'video': {
+            'startTime': 1560331414000,
+            'endTime': 1560331472000,
+            'recType': 2
+        },
+        'alarms': [1560331472000]
+    }, {
+        'video': {
+            'startTime': 1560331472000,
+            'endTime': 1560331590000,
+            'recType': 2
+        },
+        'alarms': [1560331472000, 1560331534000]
+    }, {
+        'video': {
+            'startTime': 1560331590000,
+            'endTime': 1560331611000,
+            'recType': 2
+        },
+        'alarms': [1560331594000]
+    }, {
+        'video': {
+            'startTime': 1560331611000,
+            'endTime': 1560332087000,
+            'recType': 2
+        },
+        'alarms': [1560331666000, 1560331758000, 1560331821000, 1560331889000, 1560332048000]
+    }, {
+        'video': {
+            'startTime': 1560332087000,
+            'endTime': 1560332126000,
+            'recType': 2
+        },
+        'alarms': [1560332120000]
+    }, {
+        'video': {
+            'startTime': 1560332187000,
+            'endTime': 1560332228000,
+            'recType': 2
+        },
+        'alarms': [1560332219000]
+    }, {
+        'video': {
+            'startTime': 1560332228000,
+            'endTime': 1560332324000,
+            'recType': 2
+        },
+        'alarms': [1560332283000]
+    }, {
+        'video': {
+            'startTime': 1560332324000,
+            'endTime': 1560332361000,
+            'recType': 2
+        },
+        'alarms': [1560332354000]
+    }, {
+        'video': {
+            'startTime': 1560332568000,
+            'endTime': 1560332588000,
+            'recType': 2
+        },
+        'alarms': [1560332579000]
+    }, {
+        'video': {
+            'startTime': 1560332637000,
+            'endTime': 1560332792000,
+            'recType': 2
+        },
+        'alarms': [1560332639000, 1560332699000, 1560332771000]
+    }, {
+        'video': {
+            'startTime': 1560332827000,
+            'endTime': 1560332953000,
+            'recType': 2
+        },
+        'alarms': [1560332856000, 1560332916000]
+    }, {
+        'video': {
+            'startTime': 1560332968000,
+            'endTime': 1560333073000,
+            'recType': 2
+        },
+        'alarms': [1560332978000, 1560333038000]
+    }, {
+        'video': {
+            'startTime': 1560333073000,
+            'endTime': 1560333104000,
+            'recType': 2
+        },
+        'alarms': [1560333098000]
+    }, {
+        'video': {
+            'startTime': 1560333118000,
+            'endTime': 1560333717000,
+            'recType': 2
+        },
+        'alarms': [1560333189000, 1560333259000, 1560333319000, 1560333657000]
+    }, {
+        'video': {
+            'startTime': 1560336764000,
+            'endTime': 1560336784000,
+            'recType': 2
+        },
+        'alarms': [1560336776000]
+    }, {
+        'video': {
+            'startTime': 1560340639000,
+            'endTime': 1560340662000,
+            'recType': 2
+        },
+        'alarms': [1560340645000]
+    }, {
+        'video': {
+            'startTime': 1560383802000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383855000]
+    }]
+}, {
+    'deviceSerial': 'C90843892',
+    'videos': [{
+        'video': {
+            'startTime': 1560328174000,
+            'endTime': 1560328372000,
+            'recType': 2
+        },
+        'alarms': [1560328295000]
+    }]
+}, {
+    'deviceSerial': 'C90843933',
+    'videos': [{
+        'video': {
+            'startTime': 1560323948000,
+            'endTime': 1560324784000,
+            'recType': 2
+        },
+        'alarms': [1560324021000, 1560324691000, 1560324757000]
+    }, {
+        'video': {
+            'startTime': 1560325177000,
+            'endTime': 1560325195000,
+            'recType': 2
+        },
+        'alarms': [1560325187000]
+    }, {
+        'video': {
+            'startTime': 1560325580000,
+            'endTime': 1560325652000,
+            'recType': 2
+        },
+        'alarms': [1560325586000]
+    }, {
+        'video': {
+            'startTime': 1560325652000,
+            'endTime': 1560325664000,
+            'recType': 2
+        },
+        'alarms': [1560325657000]
+    }]
+}, {
+    'deviceSerial': 'C94890650',
+    'videos': [{
+        'video': {
+            'startTime': 1560331892000,
+            'endTime': 1560331928000,
+            'recType': 2
+        },
+        'alarms': [1560331920000]
+    }, {
+        'video': {
+            'startTime': 1560332075000,
+            'endTime': 1560332178000,
+            'recType': 2
+        },
+        'alarms': [1560332090000, 1560332156000]
+    }, {
+        'video': {
+            'startTime': 1560332405000,
+            'endTime': 1560332418000,
+            'recType': 2
+        },
+        'alarms': [1560332412000]
+    }, {
+        'video': {
+            'startTime': 1560332906000,
+            'endTime': 1560332983000,
+            'recType': 2
+        },
+        'alarms': [1560332957000]
+    }, {
+        'video': {
+            'startTime': 1560333051000,
+            'endTime': 1560333065000,
+            'recType': 2
+        },
+        'alarms': [1560333065000]
+    }, {
+        'video': {
+            'startTime': 1560333065000,
+            'endTime': 1560333083000,
+            'recType': 2
+        },
+        'alarms': [1560333065000]
+    }, {
+        'video': {
+            'startTime': 1560333209000,
+            'endTime': 1560333354000,
+            'recType': 2
+        },
+        'alarms': [1560333299000]
+    }, {
+        'video': {
+            'startTime': 1560333358000,
+            'endTime': 1560333381000,
+            'recType': 2
+        },
+        'alarms': [1560333366000]
+    }, {
+        'video': {
+            'startTime': 1560333382000,
+            'endTime': 1560333453000,
+            'recType': 2
+        },
+        'alarms': [1560333447000]
+    }, {
+        'video': {
+            'startTime': 1560333504000,
+            'endTime': 1560333520000,
+            'recType': 2
+        },
+        'alarms': [1560333514000]
+    }, {
+        'video': {
+            'startTime': 1560333593000,
+            'endTime': 1560333619000,
+            'recType': 2
+        },
+        'alarms': [1560333604000]
+    }, {
+        'video': {
+            'startTime': 1560333687000,
+            'endTime': 1560333734000,
+            'recType': 2
+        },
+        'alarms': [1560333694000]
+    }, {
+        'video': {
+            'startTime': 1560333787000,
+            'endTime': 1560333812000,
+            'recType': 2
+        },
+        'alarms': [1560333800000]
+    }, {
+        'video': {
+            'startTime': 1560333889000,
+            'endTime': 1560333913000,
+            'recType': 2
+        },
+        'alarms': [1560333890000]
+    }, {
+        'video': {
+            'startTime': 1560333913000,
+            'endTime': 1560333953000,
+            'recType': 2
+        },
+        'alarms': [1560333950000]
+    }, {
+        'video': {
+            'startTime': 1560334038000,
+            'endTime': 1560334059000,
+            'recType': 2
+        },
+        'alarms': [1560334040000]
+    }, {
+        'video': {
+            'startTime': 1560334123000,
+            'endTime': 1560334143000,
+            'recType': 2
+        },
+        'alarms': [1560334131000]
+    }, {
+        'video': {
+            'startTime': 1560334180000,
+            'endTime': 1560334265000,
+            'recType': 2
+        },
+        'alarms': [1560334221000]
+    }, {
+        'video': {
+            'startTime': 1560334317000,
+            'endTime': 1560334330000,
+            'recType': 2
+        },
+        'alarms': [1560334330000]
+    }, {
+        'video': {
+            'startTime': 1560334330000,
+            'endTime': 1560334367000,
+            'recType': 2
+        },
+        'alarms': [1560334330000]
+    }, {
+        'video': {
+            'startTime': 1560334568000,
+            'endTime': 1560334579000,
+            'recType': 2
+        },
+        'alarms': [1560334578000]
+    }, {
+        'video': {
+            'startTime': 1560334628000,
+            'endTime': 1560334664000,
+            'recType': 2
+        },
+        'alarms': [1560334643000]
+    }, {
+        'video': {
+            'startTime': 1560334947000,
+            'endTime': 1560334962000,
+            'recType': 2
+        },
+        'alarms': [1560334956000]
+    }, {
+        'video': {
+            'startTime': 1560335129000,
+            'endTime': 1560335156000,
+            'recType': 2
+        },
+        'alarms': [1560335138000]
+    }, {
+        'video': {
+            'startTime': 1560335202000,
+            'endTime': 1560335245000,
+            'recType': 2
+        },
+        'alarms': [1560335212000]
+    }, {
+        'video': {
+            'startTime': 1560335295000,
+            'endTime': 1560335312000,
+            'recType': 2
+        },
+        'alarms': [1560335302000]
+    }, {
+        'video': {
+            'startTime': 1560335501000,
+            'endTime': 1560335564000,
+            'recType': 2
+        },
+        'alarms': [1560335543000]
+    }, {
+        'video': {
+            'startTime': 1560335691000,
+            'endTime': 1560335715000,
+            'recType': 2
+        },
+        'alarms': [1560335707000]
+    }, {
+        'video': {
+            'startTime': 1560335768000,
+            'endTime': 1560335785000,
+            'recType': 2
+        },
+        'alarms': [1560335771000]
+    }, {
+        'video': {
+            'startTime': 1560335889000,
+            'endTime': 1560335903000,
+            'recType': 2
+        },
+        'alarms': [1560335891000]
+    }, {
+        'video': {
+            'startTime': 1560335903000,
+            'endTime': 1560335986000,
+            'recType': 2
+        },
+        'alarms': [1560335951000]
+    }, {
+        'video': {
+            'startTime': 1560336030000,
+            'endTime': 1560336048000,
+            'recType': 2
+        },
+        'alarms': [1560336033000]
+    }, {
+        'video': {
+            'startTime': 1560336095000,
+            'endTime': 1560336159000,
+            'recType': 2
+        },
+        'alarms': [1560336132000]
+    }, {
+        'video': {
+            'startTime': 1560336191000,
+            'endTime': 1560336216000,
+            'recType': 2
+        },
+        'alarms': [1560336208000]
+    }, {
+        'video': {
+            'startTime': 1560336259000,
+            'endTime': 1560336273000,
+            'recType': 2
+        },
+        'alarms': [1560336270000]
+    }, {
+        'video': {
+            'startTime': 1560336322000,
+            'endTime': 1560336339000,
+            'recType': 2
+        },
+        'alarms': [1560336335000]
+    }, {
+        'video': {
+            'startTime': 1560336382000,
+            'endTime': 1560336404000,
+            'recType': 2
+        },
+        'alarms': [1560336398000]
+    }, {
+        'video': {
+            'startTime': 1560336423000,
+            'endTime': 1560336469000,
+            'recType': 2
+        },
+        'alarms': [1560336460000]
+    }, {
+        'video': {
+            'startTime': 1560336558000,
+            'endTime': 1560336584000,
+            'recType': 2
+        },
+        'alarms': [1560336563000]
+    }, {
+        'video': {
+            'startTime': 1560336672000,
+            'endTime': 1560336692000,
+            'recType': 2
+        },
+        'alarms': [1560336674000]
+    }, {
+        'video': {
+            'startTime': 1560337149000,
+            'endTime': 1560337202000,
+            'recType': 2
+        },
+        'alarms': [1560337193000]
+    }, {
+        'video': {
+            'startTime': 1560337237000,
+            'endTime': 1560337266000,
+            'recType': 2
+        },
+        'alarms': [1560337252000]
+    }, {
+        'video': {
+            'startTime': 1560337690000,
+            'endTime': 1560337728000,
+            'recType': 2
+        },
+        'alarms': [1560337713000]
+    }, {
+        'video': {
+            'startTime': 1560337779000,
+            'endTime': 1560337832000,
+            'recType': 2
+        },
+        'alarms': [1560337816000]
+    }, {
+        'video': {
+            'startTime': 1560338779000,
+            'endTime': 1560339020000,
+            'recType': 2
+        },
+        'alarms': [1560339010000]
+    }, {
+        'video': {
+            'startTime': 1560339049000,
+            'endTime': 1560339075000,
+            'recType': 2
+        },
+        'alarms': [1560339075000]
+    }, {
+        'video': {
+            'startTime': 1560339075000,
+            'endTime': 1560339077000,
+            'recType': 2
+        },
+        'alarms': [1560339075000]
+    }, {
+        'video': {
+            'startTime': 1560339586000,
+            'endTime': 1560339695000,
+            'recType': 2
+        },
+        'alarms': [1560339694000]
+    }, {
+        'video': {
+            'startTime': 1560340355000,
+            'endTime': 1560340634000,
+            'recType': 2
+        },
+        'alarms': [1560340356000, 1560340443000]
+    }]
+}, {
+    'deviceSerial': 'C90843969',
+    'videos': [{
+        'video': {
+            'startTime': 1560329628000,
+            'endTime': 1560330362000,
+            'recType': 2
+        },
+        'alarms': [1560330108000]
+    }, {
+        'video': {
+            'startTime': 1560330398000,
+            'endTime': 1560331226000,
+            'recType': 2
+        },
+        'alarms': [1560330824000]
+    }, {
+        'video': {
+            'startTime': 1560331261000,
+            'endTime': 1560331443000,
+            'recType': 2
+        },
+        'alarms': [1560331440000]
+    }, {
+        'video': {
+            'startTime': 1560331588000,
+            'endTime': 1560331866000,
+            'recType': 2
+        },
+        'alarms': [1560331773000]
+    }]
+}, {
+    'deviceSerial': 'C90844229',
+    'videos': [{
+        'video': {
+            'startTime': 1560331580000,
+            'endTime': 1560332418000,
+            'recType': 2
+        },
+        'alarms': [1560331734000]
+    }]
+}, {
+    'deviceSerial': 'C90843982',
+    'videos': [{
+        'video': {
+            'startTime': 1560323727000,
+            'endTime': 1560323915000,
+            'recType': 2
+        },
+        'alarms': [1560323738000, 1560323828000, 1560323888000]
+    }, {
+        'video': {
+            'startTime': 1560326801000,
+            'endTime': 1560327201000,
+            'recType': 2
+        },
+        'alarms': [1560327125000]
+    }, {
+        'video': {
+            'startTime': 1560327316000,
+            'endTime': 1560327651000,
+            'recType': 2
+        },
+        'alarms': [1560327643000]
+    }, {
+        'video': {
+            'startTime': 1560329004000,
+            'endTime': 1560329756000,
+            'recType': 2
+        },
+        'alarms': [1560329197000, 1560329325000, 1560329388000]
+    }, {
+        'video': {
+            'startTime': 1560330411000,
+            'endTime': 1560331091000,
+            'recType': 2
+        },
+        'alarms': [1560330428000, 1560330518000, 1560330578000, 1560330648000, 1560330708000, 1560330949000]
+    }, {
+        'video': {
+            'startTime': 1560331119000,
+            'endTime': 1560331160000,
+            'recType': 2
+        },
+        'alarms': [1560331129000]
+    }, {
+        'video': {
+            'startTime': 1560331252000,
+            'endTime': 1560331270000,
+            'recType': 2
+        },
+        'alarms': [1560331253000]
+    }, {
+        'video': {
+            'startTime': 1560331367000,
+            'endTime': 1560331604000,
+            'recType': 2
+        },
+        'alarms': [1560331371000]
+    }, {
+        'video': {
+            'startTime': 1560383382000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383493000, 1560383553000, 1560383620000, 1560383696000, 1560383756000, 1560383816000, 1560383917000, 1560383980000]
+    }]
+}, {
+    'deviceSerial': 'C94890223',
+    'videos': [{
+        'video': {
+            'startTime': 1560326685000,
+            'endTime': 1560326787000,
+            'recType': 2
+        },
+        'alarms': [1560326716000]
+    }, {
+        'video': {
+            'startTime': 1560327237000,
+            'endTime': 1560327307000,
+            'recType': 2
+        },
+        'alarms': [1560327241000]
+    }, {
+        'video': {
+            'startTime': 1560327351000,
+            'endTime': 1560327738000,
+            'recType': 2
+        },
+        'alarms': [1560327541000, 1560327631000, 1560327695000]
+    }, {
+        'video': {
+            'startTime': 1560327738000,
+            'endTime': 1560327767000,
+            'recType': 2
+        },
+        'alarms': [1560327756000]
+    }, {
+        'video': {
+            'startTime': 1560327906000,
+            'endTime': 1560327921000,
+            'recType': 2
+        },
+        'alarms': [1560327911000]
+    }, {
+        'video': {
+            'startTime': 1560327995000,
+            'endTime': 1560328015000,
+            'recType': 2
+        },
+        'alarms': [1560327999000]
+    }, {
+        'video': {
+            'startTime': 1560328151000,
+            'endTime': 1560328557000,
+            'recType': 2
+        },
+        'alarms': [1560328513000]
+    }, {
+        'video': {
+            'startTime': 1560328557000,
+            'endTime': 1560328584000,
+            'recType': 2
+        },
+        'alarms': [1560328574000]
+    }, {
+        'video': {
+            'startTime': 1560328748000,
+            'endTime': 1560328949000,
+            'recType': 2
+        },
+        'alarms': [1560328858000]
+    }, {
+        'video': {
+            'startTime': 1560328964000,
+            'endTime': 1560329107000,
+            'recType': 2
+        },
+        'alarms': [1560329008000]
+    }, {
+        'video': {
+            'startTime': 1560329130000,
+            'endTime': 1560329304000,
+            'recType': 2
+        },
+        'alarms': [1560329185000, 1560329278000]
+    }, {
+        'video': {
+            'startTime': 1560329357000,
+            'endTime': 1560329379000,
+            'recType': 2
+        },
+        'alarms': [1560329371000]
+    }, {
+        'video': {
+            'startTime': 1560329379000,
+            'endTime': 1560329922000,
+            'recType': 2
+        },
+        'alarms': [1560329440000, 1560329672000, 1560329753000]
+    }, {
+        'video': {
+            'startTime': 1560331041000,
+            'endTime': 1560331091000,
+            'recType': 2
+        },
+        'alarms': [1560331046000]
+    }, {
+        'video': {
+            'startTime': 1560332324000,
+            'endTime': 1560332731000,
+            'recType': 2
+        },
+        'alarms': [1560332688000]
+    }, {
+        'video': {
+            'startTime': 1560332731000,
+            'endTime': 1560333184000,
+            'recType': 2
+        },
+        'alarms': [1560332780000, 1560332911000, 1560332978000, 1560333146000]
+    }, {
+        'video': {
+            'startTime': 1560333221000,
+            'endTime': 1560333245000,
+            'recType': 2
+        },
+        'alarms': [1560333223000]
+    }, {
+        'video': {
+            'startTime': 1560333428000,
+            'endTime': 1560333755000,
+            'recType': 2
+        },
+        'alarms': [1560333527000]
+    }, {
+        'video': {
+            'startTime': 1560383950000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383966000]
+    }]
+}, {
+    'deviceSerial': 'C90843893',
+    'videos': [{
+        'video': {
+            'startTime': 1560333526000,
+            'endTime': 1560333547000,
+            'recType': 2
+        },
+        'alarms': [1560333539000]
+    }]
+}, {
+    'deviceSerial': 'C90843930',
+    'videos': [{
+        'video': {
+            'startTime': 1560335879000,
+            'endTime': 1560336660000,
+            'recType': 2
+        },
+        'alarms': [1560336513000, 1560336591000, 1560336653000]
+    }]
+}, {
+    'deviceSerial': 'C90844278',
+    'videos': [{
+        'video': {
+            'startTime': 1560302121000,
+            'endTime': 1560302556000,
+            'recType': 2
+        },
+        'alarms': [1560302222000, 1560302326000]
+    }]
+}, {
+    'deviceSerial': 'C94890673',
+    'videos': [{
+        'video': {
+            'startTime': 1560383495000,
+            'endTime': 1560384001000,
+            'recType': 2
+        },
+        'alarms': [1560383911000, 1560383973000]
+    }]
+}]
