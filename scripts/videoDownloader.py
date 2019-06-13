@@ -24,7 +24,7 @@ class VideoDownloader(object):
     TFSTR = "%Y-%m-%d %H:%M:%S"
     @staticmethod
     def makeVTaskKey(devSn, startTime):
-        return 'vt:'  + devSn + str(startTime)
+        return 'vt:'  + devSn + ':' + str(startTime)
 
     @staticmethod
     def makeFailedVTasksKey(devSn):
@@ -65,7 +65,7 @@ class VideoDownloader(object):
         delta = int(endTimeTs/1000 - startTimeTs/1000)
         tm = datetime.datetime.fromtimestamp(startTimeTs/1000.0)
         fileName = 'videos/'+tm.strftime('%Y%m%d%H%M%S') + '_' + devSn + '_' + str(delta) + '.mpg'
-        log.info("moving file {}".format(fileName))
+        log.info("\n\nmoving file {}\n\n".format(fileName))
         return fileName
 
     def __init__(self, env):
@@ -204,6 +204,7 @@ class VideoDownloader(object):
 
             # check first if this task is already on going
             again = True
+            num = 0
             taskVal = redisConn.get(taskKey)
             if taskVal is not None:
                 taskVal = taskVal.decode('utf-8')
@@ -230,9 +231,10 @@ class VideoDownloader(object):
             ts = 0
             
             if again is True:
-                redisConn.set(taskKey, app.makeVTaskValue(1,num + 1))  
+                if taskVal is not None:
+                    redisConn.set(taskKey, app.makeVTaskValue(1,num + 1))
             else:
-                continue  
+                continue
 
             # do task
             redisConn.sadd(tasksKey, taskKey)
@@ -247,25 +249,31 @@ class VideoDownloader(object):
             msgCode = 0
             evType = 0
             
+            fileName = None
             for line in proc.stdout:
+                # filename: videos/20190612083439_C90843689_23.mpg 
+                if fileName is None:
+                    f = re.search(r'^filename: (.*?).mpg', line.decode('utf-8'))
+                    if f is not None:
+                        fileName = f.group(0)
+                        log.info("\n\n\nFileName: {}".format(fileName))
                 # code: 5557 evt: 1
                 # code:6701, eventType:1
+                #sys.stdout.buffer.write(line)
+                #sys.stdout.buffer.flush()
                 m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
                 if m is not None:
-                    #m.group(1), m.group(2)
                     msgCode = int(m.group(1))
                     evType = int(m.group(2))
-                    #sys.stdout.buffer.write(line)
-                    #sys.stdout.buffer.flush()
                     if evType == 1 and msgCode != 6701 and msgCode != 5000:
-                        sys.stdout.buffer.write("\n\n[DL_FAILED] msgCode: {}, evType: {}, device: {}, startTime: {}, endTime: {}, recType: {}".format(
+                        sys.stdout.buffer.write("\n\n[DL_FAILED] msgCode: {}, evType: {}, {}, {}, {}, {}".format(
                             msgCode, evType, devSn, startTime, endTime, recType).encode('utf-8'))
                     else:
                         if evType == 0:
-                            sys.stdout.buffer.write("\n\n[DL_START] msgCode: {}, evType: {}, device: {}, startTime: {}, endTime: {}, recType: {}".format(
+                            sys.stdout.buffer.write("\n\n[DL_START] msgCode: {}, evType: {}, {}, {}, {}, {}".format(
                             msgCode, evType, devSn, startTime, endTime, recType).encode('utf-8'))
                         else:
-                            sys.stdout.buffer.write("\n\n[DL_SUCCEDDED] msgCode: {}, evType: {}, device: {}, startTime: {}, endTime: {}, recType: {}".format(
+                            sys.stdout.buffer.write("\n\n[DL_SUCCEDDED] msgCode: {}, evType: {}, {}, {}, {}, {}".format(
                             msgCode, evType, devSn, startTime, endTime, recType).encode('utf-8'))
                     sys.stdout.buffer.flush()
             proc.stdout.close()
@@ -273,15 +281,17 @@ class VideoDownloader(object):
             
             if (evType == 1 and msgCode != 6701 and msgCode != 5000) or (msgCode == 0 and evType == 0):
                 # failed download, register in redis
+                log.info("\n\n\ndownload failed:{},{} {}, {}, {}, {}\n\n\n".format(msgCode, evType, devSn, startTime, endTime, recType))
                 failedTasksKey = app.makeFailedVTasksKey(devSn)
                 redisConn.sadd(failedTasksKey, taskKey)
                 redisConn.set(taskKey, app.makeVTaskValue(3,0))
             else:
+                log.info("\n\n\ndownload success: {}, {}, {}, {}\n\n\n".format(devSn, startTime, endTime, recType))
                 redisConn.set(taskKey, app.makeVTaskValue(2,0))
                 redisConn.srem(tasksKey, taskKey)
                 redisConn.srem(failedTasksKey, taskKey)
                 # move to downloaded
-                shutil.move(env["downloaded"], app.makeVideoFileName(devSn, v["startTime"], v["endTime"]))
+                shutil.move(fileName, env["downloaded"] + '/')
     
     def taskNeedRetry(self, taskVal):
         '''
@@ -439,6 +449,7 @@ class VideoDownloader(object):
             log.info("saved compressed devices data to redis, key: " + vadevicesKey)
         pass # end getting devices and alarmVideos
 
+
         # convert to parallel array for multiple threading
         matchedDevVideos = []
         for dev in devices:
@@ -449,10 +460,35 @@ class VideoDownloader(object):
                 if avs is not None and len(avs) != 0:
                     matchedDevVideos.append({"deviceSerial": dev["deviceSerial"], "videos": avs})
 
+        del alarmVideos
+        
         log.info("matching result: {}".format(matchedDevVideos))
 
-        with ThreadPool(env["numConcurrent"]) as tp:
-                tp.map(self.videoDownload, matchedDevVideos)        
+        self.allDone = False
+        while self.allDone == False:
+            self.allDone = True
+            tp = ThreadPool(env["numConcurrent"])
+            tph = tp.map_async(self.videoDownload, matchedDevVideos)
+            while True:
+                #
+                tph.wait(10)
+                # TODO: heartbeat
+                time.sleep(20)
+                if tph.ready():
+                    break # next round
+                else:
+                    continue
+    
+        # tackle failed tasks
+        while True:
+            retryDevVideos = []
+            for dev in devices:
+                failedKey = self.makeFailedVTasksKey(dev["deviceSerial"])
+                failedTasks = redisConn.smembers(failedTasksKey)
+                for ft in failedTasks:
+                    pass
+
+
 
 if __name__ == "__main__":
     env = dict()
