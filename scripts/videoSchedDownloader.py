@@ -63,5 +63,11 @@ if __name__ == '__main__':
     file_path = '/apps/ezviz/scripts/videos'
     target_path = os.environ.get("TARGET_PATH")
     device_serial = os.environ.get("DEVICE_LIST")
-    #get_device_sn(api_server,start_time,end_time,device_serial)
+    files = os.listdir(file_path)
+    for filename in files:
+        portion = os.path.splitext(filename)
+        if portion[1] ==".mpg":
+            newname = portion[0]+".mp4"
+            os.chdir(file_path)
+            os.rename(filename,newname)
     get_file(file_path,getToken.get_admin_token(api_server),api_server,target_path)
