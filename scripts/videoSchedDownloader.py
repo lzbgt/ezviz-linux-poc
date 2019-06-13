@@ -30,14 +30,13 @@ def get_file(path,token,address,target):
                         address=address) + str(list[1]) + "/start/" + str(timestamp) + "/length/" + str(
                         list[2].split(".")[0])
                     '''upload video'''
-                    upload_video(url, path + "/" + file, token,"playback")
+                    upload_video(url, path + "/" + file, token,"rtplay")
                 else:
                     shutil.move(path+fileName,target+fileName)
         '''delete file'''
         del_files(path)
     except Exception as e:
         logging.info("get file fail")
-
 
 '''delete all file'''
 def del_files(path):
@@ -62,6 +61,7 @@ def get_device_sn(address,start_time,end_time,device_sn):
 
     result = json.loads(r.text)['data']['list']
     devices= []
+    if device_sn is not  None:
     if len(device_sn) != 0:
         devices = str(device_sn).split(",")
         for j in devices:
@@ -125,8 +125,9 @@ if __name__ == '__main__':
     api_server = os.environ.get("API_SERVER")
     start_time = os.environ.get("START_TIME")
     end_time = os.environ.get("END_TIME")
-    file_path = os.environ.get("FILE_PATH")
+    #file_path = os.environ.get("FILE_PATH")
+    file_path = '/apps/ezviz/scripts/videos'
     target_path = os.environ.get("TARGET_PATH")
     device_serial = os.environ.get("DEVICE_LIST")
-    get_device_sn(api_server,start_time,end_time,device_serial)
+    #get_device_sn(api_server,start_time,end_time,device_serial)
     get_file(file_path,getToken.get_admin_token(api_server),api_server,target_path)
