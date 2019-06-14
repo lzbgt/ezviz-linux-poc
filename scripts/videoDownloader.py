@@ -8,7 +8,7 @@ __maintainer__ = "Bruce.Lu"
 __email__ = "lzbgt@icloud.com"
 __status__ = "ALPHA"
 
-import os, sys, time, datetime, re, json, shutil, logging
+import os, sys, time, datetime, re, json, shutil, threading, random, logging
 from  multiprocessing import Pool, Process
 from multiprocessing.pool import ThreadPool
 from subprocess import Popen, PIPE, DEVNULL
@@ -24,31 +24,31 @@ class VideoDownloader(object):
     TFSTR = "%Y-%m-%d %H:%M:%S"
     @staticmethod
     def makeVTaskKey(devSn, startTime):
-        return 'vt:'  + devSn + ':' + str(startTime)
+        return 'ezvt:'  + devSn + ':' + str(startTime)
 
     @staticmethod
     def makeFailedVTasksKey(devSn):
-        return 'vts:failed:' + devSn
+        return 'ezvts:failed:' + devSn
 
     @staticmethod
     def makeVTasksKey(devSn):
-        return 'vts:' + devSn
+        return 'ezvts:' + devSn
 
     @staticmethod
-    def makeVTaskValue(status=1, retries=0):
+    def makeVTaskValue(appId, status=1, retries=0):
         '''
         status: 1 - in_processing; 2 - done; 3 - failed
         retries: 
         '''
-        return "{}.{}.{}".format(status, retries, int(datetime.datetime.now().timestamp()*1000))
+        return "{}.{}.{}.{}".format(status, retries, int(datetime.datetime.now().timestamp()*1000), appId)
 
     @staticmethod
     def makeVADataKey(startTimeTs, endTimeTs):
-        return 'vadata:' + str(startTimeTs) + ':' + str(endTimeTs)
+        return 'ezvadata:' + str(startTimeTs) + ':' + str(endTimeTs)
 
     @staticmethod
     def makeVADevicesKey(startTimeTs, endTimeTs):
-        return 'vadevices:' + str(startTimeTs) + ':' + str(endTimeTs)
+        return 'ezvadevices:' + str(startTimeTs) + ':' + str(endTimeTs)
 
     @staticmethod
     def timeStrToTsInt(timeStr):
@@ -59,14 +59,52 @@ class VideoDownloader(object):
     def tsIntToTimeStr(tsInt):
         tm = datetime.datetime.fromtimestamp(tsInt/1000.0)
         return tm.strftime(VideoDownloader.TFSTR)
+    
+    def taskNeedRetry(self, taskVal):
+        '''
+        return (needRetry, status, retries, ts, appId)
+        '''
+        #log.info("typeof taskVal = {}".format(type(taskVal)))
+        if type(taskVal) is not str:
+            taskVal = taskVal.decode("utf-8")
+        taskVals = taskVal.split('.')
+        status = int(taskVals[0])
+        retries = int(taskVals[1])
+        ts = int(taskVals[2])
+        appId = taskVals[3]
 
-    @staticmethod
-    def makeVideoFileName(devSn, startTimeTs, endTimeTs):
-        delta = int(endTimeTs/1000 - startTimeTs/1000)
-        tm = datetime.datetime.fromtimestamp(startTimeTs/1000.0)
-        fileName = 'videos/'+tm.strftime('%Y%m%d%H%M%S') + '_' + devSn + '_' + str(delta) + '.mpg'
-        log.info("\n\nmoving file {}\n\n".format(fileName))
-        return fileName
+        log.info("status: {}, retries: {}, ts: {}, appId: {}, self: {}".format(status, retries, ts, appId, self.appId))
+        if status == 3: # failed task
+            # it was a failed task with retries: {}
+            if retries < env["maxRetries"]:
+                return True, status, retries, ts, appId
+            else:
+                return False, status, retries, ts, appId
+        elif status == 1: # in processing
+            # check liveness of app
+            if appId == self.appId:
+                # should run again
+                log.info("[BUG] had run on this instance(1), but need rerun")
+                return True, status, retries, ts, appId
+            else:
+                lastHeartBeatTs = redisConn.get(appId)
+                now = int(datetime.datetime.now().timestamp())
+                # over 30s no heartbeat
+                # liveness check
+                delta = now - lastHeartBeatTs
+                log.info("delta: {}, thisApp: {}, other:{}".format(delta, self.appId, appId))
+                if  delta > 30:
+                    # 30s no heartbeat, rerun
+                    return True, status, retries, ts, appId
+                else:
+                    # received heartbeat, skip
+                    return False, status, retries, ts, appId
+        elif status == 2: # done
+            # this task was done before
+            return False, status, retries, ts, appId
+        else:
+            log.info("[BUG] unkown status: {}".format(status))
+            return False, status, retries, ts, appId
 
     def __init__(self, env):
         self.env = env
@@ -84,9 +122,26 @@ class VideoDownloader(object):
         if r.json().get("data") is None:
             log.error("failed get token")
             exit(1)
+
+        self.makeAppId()
         
         self.env["token"] = r.json()["data"]["accessToken"]
         log.info("token is: " + self.env["token"])
+
+    def makeAppId(self):
+        log.info("1")
+        if not getattr(self, 'appId', None):
+            random.seed()
+            log.info("2")
+            rnd = int(random.random()*1000)
+            _tid = threading.get_ident()
+            self.appId= 'ezvdl:app:' + str(rnd) +':' + str(_tid)
+
+        return self.appId
+    
+    def refreshLiveness(self):
+        secs = int(datetime.datetime.now().timestamp())
+        redisConn.set(self.makeAppId(), secs)
 
     def getDeviceList(self):
         devices = []
@@ -132,20 +187,31 @@ class VideoDownloader(object):
         startTime = int(startTime.timestamp()*1000)
         endTime = datetime.datetime.strptime(endTime, VideoDownloader.TFSTR)
         endTime = int(endTime.timestamp()*1000)
-
+        total = 10000
+        currNum = 0
+        ret = []
         url = "https://open.ys7.com/api/lapp/alarm/device/list"
         data = {"accessToken":"at.957mvxyr5jb83w9056myl66fcu8kyhl3-4n5k20fl3x-1pg85jt-ony0xd8xb",
-        "deviceSerial":sn,"startTime":startTime,"endTime":endTime,"status":status,"pageSize":"1000"}
-        r = requests.post(url, data=data)
-        log.info(json.dumps(data))
-        if r.status_code != 200 and r.json().get("code") != "200":
-            log.error("failed to get alarm for device {}. {}".format(sn, r.text))
-            exit(1)
-        
-        if r.json().get("data") is None:
-            return []
+        "deviceSerial":sn,"startTime":startTime,"endTime":endTime,"status":status,"pageSize":"50", "pageStart": 0}
+        while currNum < total:
+            r = requests.post(url, data=data)
+            log.info(json.dumps(data))
+            if r.status_code != 200 and r.json().get("code") != "200":
+                log.error("failed to get alarm for device {}. {}".format(sn, r.text))
+                exit(1)
 
-        return sorted(r.json()["data"], key=lambda k: k["alarmTime"])
+            if r.json().get("data") is None:
+                return ret
+            else:
+                rj = r.json()
+                rp = rj["page"]
+                data["pageStart"] = data["pageStart"] + 1
+                currNum = currNum + rp["size"]
+                total = rp["total"]
+                log.info("total:{}, curr:{}".format(total, currNum))
+                ret = ret +  rj["data"]
+
+        return sorted(ret, key=lambda k: k["alarmTime"])
 
     def getAlarmsPar(self, dev):
         self.alarms[dev["deviceSerial"]] =  self.getAlarms(dev["deviceSerial"], self.env["startTime"], self.env["endTime"])
@@ -182,10 +248,9 @@ class VideoDownloader(object):
         devSn = videos["deviceSerial"]
         vss = videos["videos"]
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
-        for vs in vss:
+        for vs in vss[:1]:
             v = vs["video"]
-            #log.info("type: {}, value: {}".format(type(v["startTime"]), v["startTime"]))
-
+            alarmPic = v['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
             endTime = app.tsIntToTimeStr(v["endTime"])
             appKey = app.env["appKey"]
@@ -194,6 +259,7 @@ class VideoDownloader(object):
 
             taskKey = app.makeVTaskKey(devSn, v["startTime"])
             tasksKey = app.makeVTasksKey(devSn)
+            log.info("task: dev {}, start {}, end {}, type {}".format(devSn, v["startTime"], v["startTime"], recType))
 
             # track this task in redis
             # key := devSn + ':' + videoStartTimeStamp
@@ -204,43 +270,59 @@ class VideoDownloader(object):
 
             # check first if this task is already on going
             again = True
-            num = 0
-            taskVal = redisConn.get(taskKey)
-            if taskVal is not None:
-                taskVal = taskVal.decode('utf-8')
-                numRunning = redisConn.scard(tasksKey)
-                if numRunning is not None:
-                    # only 3 connections to yscloud for one device
-                    # clean dirty tasks
-                    if numRunning >= 3:
-                        # check if there was expire task
-                        tasksVal = redisConn.smembers(tasksKey)
-                        if tasksVal is not None:
-                            #log.info("tasksVal: {}".format(tasksVal))
-                            for tk in tasksVal:
-                                tv = redisConn.get(tk)
-                                if tv is not None:
-                                    again, num = self.taskNeedRetry(tv)
-                        # check again
-                        numRunning = redisConn.scard(tasksKey)
-                        if numRunning >= 3:
-                            log.warning("running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
-
             status = 0
             retries = 0
             ts = 0
+            appId = None
+            delta = 0
+
+            numRunning = redisConn.scard(tasksKey)
+            log.info("running sessions for {}: {}".format(devSn, numRunning))
+            if numRunning >= 3:
+                # clean tasks
+                tasksVal = redisConn.smembers(tasksKey)
+                for tk in tasksVal:
+                    tv = redisConn.get(tk)
+                    a, s, r, t, i = self.taskNeedRetry(tv)
+                    if a:
+                        redisConn.srem(tasksKey, tv)
             
-            if again is True:
-                if taskVal is not None:
-                    redisConn.set(taskKey, app.makeVTaskValue(1,num + 1))
+            numRunning = redisConn.scard(tasksKey)
+            if numRunning >= 3:
+                log.error("[SKIP] running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
+                return
+
+            
+            taskVal = redisConn.get(taskKey)
+            log.info("redis taskval:{}, thisAppId: {}".format(taskVal, self.appId))
+            if taskVal is not None:
+                # had run before
+                # check status
+                taskVal = taskVal.decode('utf-8')
+                #log.info("taskVal: {}".format(taskVal))
+                again, status, retries, ts, appId = self.taskNeedRetry(taskVal)
+
+                #log.info("check status2. type appId:{}".format(type(appId)))
+                if again == False:
+                    if status == 2:
+                        log.info("[SKIP] task was done: {},{},{},{}".format(devSn, startTime, endTime, recType))
+                    elif status == 1:
+                        log.info("[SKIP] task running on other instance alive: {},{},{},{}".format(devSn, startTime, endTime, recType))
+                    elif retries >= env['maxRetries']:
+                        log.info("[SKIP] EZ_MAX_RETRIES: {} reached: {}".format(env['maxRetries'], retries))
+                    else:
+                        delta = int(datetime.datetime.now().timestamp()) - ts
+                        log.info("[UNKOWN] taskAppId: {}, instanceId:{}, delta-secs:{}".format(appId, self.appId, delta))
+                    return
+            
+            #log.info("prepare")
+            if appId == None:
+                log.info("new task. AppId:{}".format(self.appId))
+                redisConn.set(taskKey, app.makeVTaskValue(self.appId))
             else:
-                continue
+                redisConn.set(taskKey, app.makeVTaskValue(self.appId, 1, retries + 1))
 
-            # do task
             redisConn.sadd(tasksKey, taskKey)
-
-            if taskVal is None:
-                redisConn.set(taskKey, app.makeVTaskValue())
 
             log.info("start cmd with params: {} {} {} {} {} {}".format(startTime, endTime, devSn, appKey, token, recType))
             proc = Popen(["./ezviz-cmd", "records", "get", "1", startTime, endTime, "3", devSn, "123456", appKey, token, recType],
@@ -256,9 +338,7 @@ class VideoDownloader(object):
                     f = re.search(r'^filename: (.*?).mpg', line.decode('utf-8'))
                     if f is not None:
                         fileName = f.group(0)
-                        log.info("\n\n\nFileName: {}".format(fileName))
-                # code: 5557 evt: 1
-                # code:6701, eventType:1
+                        log.info("\n\n\nFileName: {}\n alarmPic: {}\n\n".format(fileName, alarmPicUrl))
                 #sys.stdout.buffer.write(line)
                 #sys.stdout.buffer.flush()
                 m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
@@ -276,55 +356,29 @@ class VideoDownloader(object):
                             sys.stdout.buffer.write("\n\n[DL_SUCCEDDED] msgCode: {}, evType: {}, {}, {}, {}, {}".format(
                             msgCode, evType, devSn, startTime, endTime, recType).encode('utf-8'))
                     sys.stdout.buffer.flush()
-            proc.stdout.close()
             proc.wait()
+            proc.stdout.close()
             
             if (evType == 1 and msgCode != 6701 and msgCode != 5000) or (msgCode == 0 and evType == 0):
                 # failed download, register in redis
                 log.info("\n\n\ndownload failed:{},{} {}, {}, {}, {}\n\n\n".format(msgCode, evType, devSn, startTime, endTime, recType))
                 failedTasksKey = app.makeFailedVTasksKey(devSn)
                 redisConn.sadd(failedTasksKey, taskKey)
-                redisConn.set(taskKey, app.makeVTaskValue(3,0))
+                redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
+                # device offline & file not found
+                if msgCode == 5404:
+                    redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                elif msgCode == 5402:
+                    redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                else:
+                    self.allDone = False
             else:
                 log.info("\n\n\ndownload success: {}, {}, {}, {}\n\n\n".format(devSn, startTime, endTime, recType))
-                redisConn.set(taskKey, app.makeVTaskValue(2,0))
+                redisConn.set(taskKey, app.makeVTaskValue(self.appId,2, retries))
                 redisConn.srem(tasksKey, taskKey)
                 redisConn.srem(failedTasksKey, taskKey)
                 # move to downloaded
                 shutil.move(fileName, env["downloaded"] + '/')
-    
-    def taskNeedRetry(self, taskVal):
-        '''
-        return (needRetry, retries)
-        '''
-        #log.info("typeof taskVal = {}".format(type(taskVal)))
-        if type(taskVal) is not str:
-            taskVal = taskVal.decode("utf-8")
-        taskVals = taskVal.split('.')
-        status = int(taskVals[0])
-        retries = int(taskVals[1])
-        ts = int(taskVals[2])
-        if status == 3: # failed task
-            log.info("it was a failed task with retries: {}".format(retries))
-            return True, retries
-        elif status == 1: # in processing
-            # is running too long?
-            now = int(datetime.datetime.now().timestamp())
-            delta = now - ts/1000
-            if delta > 60 * 30: # over 30 minutes
-                # retry
-                log.info("this task was over 30 minutes with retires: {}".format(retries))
-                return True, retries
-            else:
-                # just skip it
-                log.info("task is still running. skip")
-                return False, 0
-        elif status == 2: # done
-            log.info("this task was done before. skip")
-            return False, 0
-        else:
-            log.info("unkown status {}".format(status))
-            return False, 0
 
     def run(self, redisConn):
         os.makedirs(env["downloaded"], exist_ok=True)
@@ -342,6 +396,13 @@ class VideoDownloader(object):
         devices = None
         alarmVideos = None
         loadedFromRedis = False
+
+        if env["devicesList"] is not None:
+            devices = []
+            devL = env["devicesList"].split(',')
+            for d in devL:
+                devices.append({"deviceSerial": d.strip()})
+
         if vadata is not None and vadevices is not None:
             vadataunzip = zlib.decompress(vadata)
             del vadata
@@ -359,11 +420,6 @@ class VideoDownloader(object):
             # get devices
             devices = self.getDeviceList()
 
-            # task: get all alarms and videos
-            # alarms: {devSn: [{alarm}]}
-            # alarm: {alarmTime, }
-            # videos: {devSn: [{video}]}
-            # video: {startTime, endTime, recType}
             self.alarms = dict()
             self.videos = dict()
 
@@ -373,11 +429,6 @@ class VideoDownloader(object):
             with ThreadPool(env["numConcurrent"]) as tp:
                 tp.map(self.getVideoListPar, devices)
 
-            #log.info("alarms: {}".format(self.alarms))
-            #log.info("\n\n\n\nvideos: {}".format(self.videos))
-            # task: match alarm & video
-            # alarmVideos: {devSn: [alarmVideo]}
-            # alarmVide: {video, [alarm]}
             alarmVideos = dict()
             for dev in devices[:]:
                 thisAlarms = self.alarms.get(dev["deviceSerial"])
@@ -406,7 +457,7 @@ class VideoDownloader(object):
                             continue
                         # matched
                         #log.info("matched {}-{}:{} -> {}".format(iv, i, v, thisAlarms[i]["alarmTime"]))
-                        matchedAlarms.append(thisAlarms[i]["alarmTime"])
+                        matchedAlarms.append({'alarmTime': thisAlarms[i]["alarmTime"], 'alarmPicUrl': thisAlarms[i]["alarmPicUrl"]})
                     pass # alarm
                     alarmVideos[dev["deviceSerial"]].append({"video": v, "alarms": matchedAlarms})
                     iv = iv + 1
@@ -423,8 +474,10 @@ class VideoDownloader(object):
                 vas = alarmVideos.get(dev["deviceSerial"])
                 tasksKey = self.makeVTasksKey(dev["deviceSerial"])
                 failedTasksKey = self.makeFailedVTasksKey(dev["deviceSerial"])
-                redisConn.delete(failedTasksKey)
-                redisConn.delete(tasksKey)
+                if failedTasksKey is not None:
+                    redisConn.delete(failedTasksKey)
+                if tasksKey is not None:
+                    redisConn.delete(tasksKey)
                 if vas is not None:
                     for v in vas:
                         startTime = v["video"]["startTime"]
@@ -464,29 +517,26 @@ class VideoDownloader(object):
         
         log.info("matching result: {}".format(matchedDevVideos))
 
+        # store appId
+        self.refreshLiveness()
         self.allDone = False
         while self.allDone == False:
             self.allDone = True
-            tp = ThreadPool(env["numConcurrent"])
-            tph = tp.map_async(self.videoDownload, matchedDevVideos)
+            tp = ThreadPool(1)#env["numConcurrent"])
+            tph = tp.map_async(self.videoDownload, matchedDevVideos[:])
+            log.info("pooling..")
+            time.sleep(4)
+            self.refreshLiveness()
             while True:
-                #
-                tph.wait(10)
+                # 20s
+                tph.wait(20)
                 # TODO: heartbeat
-                time.sleep(20)
+                self.refreshLiveness()
+                log.info("refreshed")
                 if tph.ready():
                     break # next round
                 else:
                     continue
-    
-        # tackle failed tasks
-        while True:
-            retryDevVideos = []
-            for dev in devices:
-                failedKey = self.makeFailedVTasksKey(dev["deviceSerial"])
-                failedTasks = redisConn.smembers(failedTasksKey)
-                for ft in failedTasks:
-                    pass
 
 
 
@@ -498,16 +548,21 @@ if __name__ == "__main__":
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
+    env['maxRetries'] = int(os.getenv("EZ_MAX_RETRIES", "10"))
+    env["devicesList"] = os.getenv("EZ_DEVICES_LIST", None)
     env["startOver"] = os.getenv("EZ_START_OVER", "false")
     env["downloaded"] = "downloaded"
 
     # last day
     startTime = datetime.datetime.fromordinal((datetime.datetime.now()- datetime.timedelta(days=1)).toordinal())
+    env["startTimeTs"] = int(startTime.timestamp())
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
+    env["endTimeTs"] = int(endTime.timestamp())
     startTime = startTime.strftime(VideoDownloader.TFSTR)
     endTime = endTime.strftime(VideoDownloader.TFSTR)
     env["startTime"] = os.getenv("EZ_START_TIME", startTime)
     env["endTime"] = os.getenv("EZ_END_TIME", endTime)
+
 
     redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
     if redisConn is None:
