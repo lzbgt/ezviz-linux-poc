@@ -315,6 +315,11 @@ class VideoDownloader(object):
                         delta = int(datetime.datetime.now().timestamp()) - ts
                         log.info("[UNKOWN] taskAppId: {}, instanceId:{}, delta-secs:{}".format(appId, self.appId, delta))
                     return
+                else:
+                    if status == 1:
+                        log.info("[RETAKE] other instance dead before task done, retake.")
+                    elif status == 3:
+                        log.info("[RETAKE] failed before. but retries {} < {}".format(retries, env['maxRetries']))
             
             #log.info("prepare")
             if appId == None:
