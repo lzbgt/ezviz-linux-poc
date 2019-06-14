@@ -370,13 +370,17 @@ class VideoDownloader(object):
                 log.info("\n\n\ndownload failed:{},{} {}, {}, {}, {}\n\n\n".format(msgCode, evType, devSn, startTime, endTime, recType))
                 failedTasksKey = app.makeFailedVTasksKey(devSn)
                 redisConn.sadd(failedTasksKey, taskKey)
-                redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
+                
                 # device offline & file not found
                 if msgCode == 5404:
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
                 elif msgCode == 5402:
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
                 else:
+                    # need retry for other msgCode
+                    if retries >= env['maxRetries']:
+                        retries = msgCode
+                    redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
                     self.allDone = False
             else:
                 log.info("\n\n\ndownload success: {}, {}, {}, {}\n\n\n".format(devSn, startTime, endTime, recType))
@@ -542,8 +546,6 @@ class VideoDownloader(object):
                     break # next round
                 else:
                     continue
-
-
 
 if __name__ == "__main__":
     env = dict()
