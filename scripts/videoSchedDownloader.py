@@ -14,7 +14,7 @@ def get_file(path,token,address,target):
                 last = int(stat.st_mtime)
                 now = int(datetime.datetime.now().timestamp())
                 deltaSecs = now -last
-                if deltaSecs > 60 * 2:
+                if deltaSecs < 60 * 2:
                     continue
                 file_size = os.path.getsize(path+"/"+fileName)
                 list = fileName.split("_")
