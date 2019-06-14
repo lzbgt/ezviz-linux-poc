@@ -10,6 +10,12 @@ def get_file(path,token,address,target):
         for root, dirs, files in os.walk(path):
             for file in files:
                 fileName = file
+                stat = os.stat(path + '/' + fileName)
+                last = int(stat.st_mtime)
+                now = int(datetime.datetime.now().timestamp())
+                deltaSecs = now -last
+                if deltaSecs > 60 * 2:
+                    continue
                 file_size = os.path.getsize(path+"/"+fileName)
                 list = fileName.split("_")
                 if len(list[0]) == 14 and file_size != 0:
