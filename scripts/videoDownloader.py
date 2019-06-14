@@ -297,7 +297,6 @@ class VideoDownloader(object):
                 log.error("[SKIP] running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
                 continue
 
-            
             taskVal = redisConn.get(taskKey)
             log.info("redis taskval:{}, thisAppId: {}".format(taskVal, self.appId))
             if taskVal is not None:
