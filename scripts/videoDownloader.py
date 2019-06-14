@@ -15,7 +15,7 @@ from subprocess import Popen, PIPE, DEVNULL
 import requests, redis, zlib
  
 logging.basicConfig(level=logging.INFO, stream=sys.stderr,
-                     format='%(asctime)s %(name)s %(levelname)s: %(message)s')
+                     format='%(asctime)s %(module)s:%(lineno)s %(levelname)s: %(message)s')
 log = logging.getLogger(__name__)
 
 redisConn = None
@@ -82,17 +82,18 @@ class VideoDownloader(object):
                 return False, status, retries, ts, appId
         elif status == 1: # in processing
             # check liveness of app
+            log.info("appId: {}, thisId:{}".format(appId, self.appId))
             if appId == self.appId:
                 # should run again
                 log.info("[BUG] had run on this instance(1), but need rerun")
                 return True, status, retries, ts, appId
             else:
-                lastHeartBeatTs = redisConn.get(appId)
+                lastHeartBeatTs = int(redisConn.get(appId))
                 now = int(datetime.datetime.now().timestamp())
                 # over 30s no heartbeat
                 # liveness check
                 delta = now - lastHeartBeatTs
-                log.info("delta: {}, thisApp: {}, other:{}".format(delta, self.appId, appId))
+                log.info("checkpoint delta: {}, thisApp: {}, other:{}".format(delta, self.appId, appId))
                 if  delta > 30:
                     # 30s no heartbeat, rerun
                     return True, status, retries, ts, appId
@@ -129,7 +130,6 @@ class VideoDownloader(object):
         log.info("token is: " + self.env["token"])
 
     def makeAppId(self):
-        log.info("1")
         if not getattr(self, 'appId', None):
             random.seed()
             log.info("2")
@@ -248,9 +248,9 @@ class VideoDownloader(object):
         devSn = videos["deviceSerial"]
         vss = videos["videos"]
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
-        for vs in vss[:1]:
+        for vs in vss[:]:
             v = vs["video"]
-            alarmPic = v['alarms'][0]['alarmPicUrl']
+            alarmPic = vs['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
             endTime = app.tsIntToTimeStr(v["endTime"])
             appKey = app.env["appKey"]
@@ -269,6 +269,7 @@ class VideoDownloader(object):
             #       timestamp := ts_in_millisecs - should update every minute. (for health checking)
 
             # check first if this task is already on going
+            
             again = True
             status = 0
             retries = 0
@@ -338,7 +339,7 @@ class VideoDownloader(object):
                     f = re.search(r'^filename: (.*?).mpg', line.decode('utf-8'))
                     if f is not None:
                         fileName = f.group(0)
-                        log.info("\n\n\nFileName: {}\n alarmPic: {}\n\n".format(fileName, alarmPicUrl))
+                        log.info("\n\n\nFileName: {}\n alarmPic: {}\n\n".format(fileName, alarmPic))
                 #sys.stdout.buffer.write(line)
                 #sys.stdout.buffer.flush()
                 m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
@@ -424,16 +425,15 @@ class VideoDownloader(object):
             self.videos = dict()
 
             with ThreadPool(env["numConcurrent"]) as tp:
-                tp.map(self.getAlarmsPar, devices)
+                tp.map(self.getAlarmsPar, devices[:])
             
             with ThreadPool(env["numConcurrent"]) as tp:
-                tp.map(self.getVideoListPar, devices)
+                tp.map(self.getVideoListPar, devices[:])
 
             alarmVideos = dict()
             for dev in devices[:]:
                 thisAlarms = self.alarms.get(dev["deviceSerial"])
                 thisVideos = self.videos.get(dev["deviceSerial"])
-
                 # next dev
                 if thisAlarms is None or thisVideos is None or len(thisAlarms) == 0 or len(thisVideos) == 0:
                     continue
@@ -449,10 +449,10 @@ class VideoDownloader(object):
                     for i in range(idx, end):
                         #log.info("matching {}-{}:{} -> {}".format(iv, i, v, thisAlarms[i]["alarmTime"]))
                         # the first alarm is new than this video, next video
-                        if thisAlarms[i]["alarmTime"] > v["endTime"]:
+                        if thisAlarms[i]["alarmTime"] + 8 * 60 * 60 * 1000 > v["endTime"]:
                             break
                         # next alarm, change idx for later iter
-                        if thisAlarms[i]["alarmTime"] < v["startTime"]:
+                        if thisAlarms[i]["alarmTime"] + 8 * 60 * 60 * 1000 < v["startTime"]:
                             idx = i + 1
                             continue
                         # matched
