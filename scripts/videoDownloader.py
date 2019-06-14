@@ -109,6 +109,8 @@ class VideoDownloader(object):
 
     def __init__(self, env):
         self.env = env
+        self.threadResults = []
+        self.threadResultsNum = 0
         if any([env["appKey"], env["appSecret"], env["redisAddr"]]) is None:
             exit(1)
         # get token
@@ -249,6 +251,7 @@ class VideoDownloader(object):
         vss = videos["videos"]
         failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
+        hasFailedTask = False
         for vs in vss[:]:
             v = vs["video"]
             alarmPic = vs['alarms'][0]['alarmPicUrl']
@@ -292,7 +295,7 @@ class VideoDownloader(object):
             numRunning = redisConn.scard(tasksKey)
             if numRunning >= 3:
                 log.error("[SKIP] running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
-                return
+                continue
 
             
             taskVal = redisConn.get(taskKey)
@@ -315,7 +318,7 @@ class VideoDownloader(object):
                     else:
                         delta = int(datetime.datetime.now().timestamp()) - ts
                         log.info("[UNKOWN] taskAppId: {}, instanceId:{}, delta-secs:{}".format(appId, self.appId, delta))
-                    return
+                    continue
                 else:
                     if status == 1:
                         log.info("[RETAKE] other instance dead before task done, retake.")
@@ -345,7 +348,7 @@ class VideoDownloader(object):
                     f = re.search(r'^filename: (.*?).mpg', line.decode('utf-8'))
                     if f is not None:
                         fileName = f.group(0)
-                        log.info("\n\n\nFileName: {}\n alarmPic: {}\n\n".format(fileName, alarmPic))
+                        log.info("\n\n\nFileName: {}\n alarmPic: {}".format(fileName, alarmPic))
                 #sys.stdout.buffer.write(line)
                 #sys.stdout.buffer.flush()
                 m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
@@ -382,14 +385,18 @@ class VideoDownloader(object):
                     if retries >= env['maxRetries']:
                         retries = msgCode
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
-                    self.allDone = False
+                    hasFailedTask = True
             else:
-                log.info("\n\n\ndownload success: {}, {}, {}, {}\n\n\n".format(devSn, startTime, endTime, recType))
+                log.info("\n\ndownload success: {}, {}, {}, {}\n\n".format(devSn, startTime, endTime, recType))
                 redisConn.set(taskKey, app.makeVTaskValue(self.appId,2, retries))
                 redisConn.srem(tasksKey, taskKey)
                 redisConn.srem(failedTasksKey, taskKey)
-                # move to downloaded
-                shutil.move(fileName, env["downloaded"] + '/')
+
+                #log.info("moving file from {} to {}".format(fileName, env['downloaded']))
+                #shutil.move(fileName, env["downloaded"] + '/')
+        return hasFailedTask
+    def threadCb(self, result):
+        self.threadResults.append(result)
 
     def run(self, redisConn):
         os.makedirs(env["downloaded"], exist_ok=True)
@@ -529,11 +536,13 @@ class VideoDownloader(object):
 
         # store appId
         self.refreshLiveness()
-        self.allDone = False
-        while self.allDone == False:
-            self.allDone = True
+
+        allDone = False
+        while allDone == False:
             tp = ThreadPool(env["numConcurrent"])
-            tph = tp.map_async(self.videoDownload, matchedDevVideos[:])
+            self.threadResults = []
+            self.threadResultsNum = len(matchedDevVideos)
+            tph = tp.map_async(self.videoDownload, matchedDevVideos[:], 1, self.threadCb)
             log.info("pooling..")
             time.sleep(4)
             self.refreshLiveness()
@@ -543,10 +552,17 @@ class VideoDownloader(object):
                 # TODO: heartbeat
                 self.refreshLiveness()
                 log.info("refreshed")
-                if tph.ready():
-                    break # next round
-                else:
+                try:
+                    tph.successful()
+                except Exception as e:
+                    #log.error("exception: {}".format(e))
+                    # not ready
                     continue
+                log.info("\n\n\n\n\nresults: {}\n\n\n\n".format(self.threadResults))
+                if all(self.threadResults):
+                    allDone = True            
+                break
+                
 
 if __name__ == "__main__":
     env = dict()
