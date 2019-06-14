@@ -247,6 +247,7 @@ class VideoDownloader(object):
         app = self
         devSn = videos["deviceSerial"]
         vss = videos["videos"]
+        failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
         for vs in vss[:]:
             v = vs["video"]
@@ -368,7 +369,7 @@ class VideoDownloader(object):
             if (evType == 1 and msgCode != 6701 and msgCode != 5000) or (msgCode == 0 and evType == 0):
                 # failed download, register in redis
                 log.info("\n\n\ndownload failed:{},{} {}, {}, {}, {}\n\n\n".format(msgCode, evType, devSn, startTime, endTime, recType))
-                failedTasksKey = app.makeFailedVTasksKey(devSn)
+                
                 redisConn.sadd(failedTasksKey, taskKey)
                 
                 # device offline & file not found
