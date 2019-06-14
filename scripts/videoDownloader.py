@@ -527,7 +527,7 @@ class VideoDownloader(object):
         self.allDone = False
         while self.allDone == False:
             self.allDone = True
-            tp = ThreadPool(1)#env["numConcurrent"])
+            tp = ThreadPool(env["numConcurrent"])
             tph = tp.map_async(self.videoDownload, matchedDevVideos[:])
             log.info("pooling..")
             time.sleep(4)
