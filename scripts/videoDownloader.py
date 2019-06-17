@@ -252,7 +252,7 @@ class VideoDownloader(object):
         failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
         hasFailedTask = False
-        for vs in vss[:2]:
+        for vs in vss[:]:
             v = vs["video"]
             alarmPic = vs['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
@@ -542,7 +542,7 @@ class VideoDownloader(object):
         hasFailure = True
         while hasFailure == True:
             hasFailure = False
-            tp = ThreadPool(10)#env["numConcurrent"])
+            tp = ThreadPool(env["numConcurrent"])
             self.threadResults = []
             self.threadErrResults = []
             tph = tp.map_async(self.videoDownload, matchedDevVideos[:], 1, self.threadCb, self.threadErrCb)
