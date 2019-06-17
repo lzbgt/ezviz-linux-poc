@@ -395,6 +395,7 @@ class VideoDownloader(object):
         return hasFailedTask
     def threadCb(self, result):
         self.threadResults.append(result)
+        log.info("threadResults: {}".format(result))
 
     def run(self, redisConn):
         os.makedirs(env["downloaded"], exist_ok=True)
@@ -539,7 +540,6 @@ class VideoDownloader(object):
         while allDone == False:
             tp = ThreadPool(env["numConcurrent"])
             self.threadResults = []
-            self.threadResultsNum = len(matchedDevVideos)
             tph = tp.map_async(self.videoDownload, matchedDevVideos[:], 1, self.threadCb)
             log.info("pooling..")
             time.sleep(4)
@@ -550,14 +550,16 @@ class VideoDownloader(object):
                 # TODO: heartbeat
                 self.refreshLiveness()
                 log.info("refreshed")
-                try:
+                try:  
                     tph.successful()
                 except Exception as e:
                     #log.error("exception: {}".format(e))
                     # not ready
                     continue
+                # next
+                tph.close()
                 log.info("\n\n\n\n\nresults: {}\n\n\n\n".format(self.threadResults))
-                if all(self.threadResults):
+                if all(self.threadResults) or len(self.threadResults) == 0:
                     allDone = True            
                 break
                 
