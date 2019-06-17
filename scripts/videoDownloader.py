@@ -23,12 +23,11 @@ redisConn = None
 class VideoDownloader(object):
     TFSTR = "%Y-%m-%d %H:%M:%S"
     @staticmethod
-    def makeVTaskKey(devSn, startTime):
-        return 'ezvt:'  + devSn + ':' + str(startTime)
+    def makeVTaskKey(devSn, startTimeTs, endTimeTs, recType):
+        return 'ezvt:'  + devSn + ':' + str(startTimeTs) + ':' + str(endTimeTs) + ':' + recType
 
-    @staticmethod
-    def makeFailedVTasksKey(devSn):
-        return 'ezvts:failed:' + devSn
+    def makeFailedVTasksKey(self, devSn):
+        return 'ezvts:failed:' + env["startTimeTs"] + ':' + env["endTimeTs"] + ":devSn";
 
     @staticmethod
     def makeVTasksKey(devSn):
@@ -39,8 +38,10 @@ class VideoDownloader(object):
         '''
         status: 1 - in_processing; 2 - done; 3 - failed
         retries: 
+        appId:
+        ts:
         '''
-        return "{}.{}.{}.{}".format(status, retries, int(datetime.datetime.now().timestamp()*1000), appId)
+        return "{}.{}.{}.{}".format(status, retries, appId, int(datetime.datetime.now().timestamp()*1000))
 
     @staticmethod
     def makeVADataKey(startTimeTs, endTimeTs):
@@ -70,8 +71,8 @@ class VideoDownloader(object):
         taskVals = taskVal.split('.')
         status = int(taskVals[0])
         retries = int(taskVals[1])
-        ts = int(taskVals[2])
-        appId = taskVals[3]
+        appId = taskVals[2]
+        ts = int(taskVals[3])
 
         log.info("status: {}, retries: {}, ts: {}, appId: {}, self: {}".format(status, retries, ts, appId, self.appId))
         if status == 3: # failed task
@@ -261,9 +262,9 @@ class VideoDownloader(object):
             token = app.env["token"]
             recType = "{}".format(v["recType"])
 
-            taskKey = app.makeVTaskKey(devSn, v["startTime"])
+            taskKey = app.makeVTaskKey(devSn, v["startTime"], v['endTime'], recType)
             tasksKey = app.makeVTasksKey(devSn)
-            log.info("task: dev {}, start {}, end {}, type {}".format(devSn, v["startTime"], v["startTime"], recType))
+            log.info("task: dev {}, start {}, end {}, type {}".format(devSn, v["startTime"], v["endTime"], recType))
 
             # track this task in redis
             # key := devSn + ':' + videoStartTimeStamp
@@ -497,7 +498,9 @@ class VideoDownloader(object):
                 if vas is not None:
                     for v in vas:
                         startTime = v["video"]["startTime"]
-                        taskKey = self.makeVTaskKey(dev["deviceSerial"], startTime)
+                        endTime = v["video"]["startTime"]
+                        recType = "{}".format(v["video"]["recType"])
+                        taskKey = self.makeVTaskKey(dev["deviceSerial"], startTime, endTime, recType)
                         redisConn.delete(taskKey)
 
                 pass
@@ -568,7 +571,7 @@ if __name__ == "__main__":
     env = dict()
     env["appKey"] = os.getenv("EZ_APPKEY", "a287e05ace374c3587e051db8cd4be82")
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.148")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
