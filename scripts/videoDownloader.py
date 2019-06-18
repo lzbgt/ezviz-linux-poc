@@ -582,7 +582,7 @@ if __name__ == "__main__":
     env["downloaded"] = "downloaded"
 
     # last day
-    startTime = datetime.datetime.fromordinal((datetime.datetime.now()- datetime.timedelta(days=1)).toordinal())
+    startTime = datetime.datetime.fromordinal((datetime.date.today() - datetime.timedelta(days=1)).toordinal())
     env["startTimeTs"] = int(startTime.timestamp())
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
     env["endTimeTs"] = int(endTime.timestamp())
