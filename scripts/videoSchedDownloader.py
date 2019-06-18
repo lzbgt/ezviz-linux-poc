@@ -10,7 +10,8 @@ def get_file(path,token,address,target):
         for root, dirs, files in os.walk(path):
             for file in files:
                 fileName = file
-                stat = os.stat(path + '/' + fileName)
+                filePath = path + '/' + fileName
+                stat = os.stat(filePath)
                 last = int(stat.st_mtime)
                 now = int(datetime.datetime.now().timestamp())
                 deltaSecs = now -last
@@ -28,21 +29,9 @@ def get_file(path,token,address,target):
                         list[2].split(".")[0])
                     '''upload video'''
                     upload_video(url, path + "/" + file, token,"playback")
-        '''delete file'''
-        del_files(path)
+                    os.remove(filePath)
     except Exception as e:
         logging.info("get file fail")
-
-
-'''delete all file'''
-def del_files(path):
-    ls = os.listdir(path)
-    for i in ls:
-        c_path = os.path.join(path, i)
-        if os.path.isdir(c_path):
-            del_files(c_path)
-        else:
-            os.remove(c_path)
 
 '''upload video'''
 def upload_video(url,filePath,token,type):
@@ -69,11 +58,4 @@ if __name__ == '__main__':
     file_path = '/apps/ezviz/scripts/videos'
     target_path = os.environ.get("TARGET_PATH")
     device_serial = os.environ.get("DEVICE_LIST")
-    files = os.listdir(file_path)
-    for filename in files:
-        portion = os.path.splitext(filename)
-        if portion[1] ==".mpg":
-            newname = portion[0]+".mp4"
-            os.chdir(file_path)
-            os.rename(filename,newname)
     get_file(file_path,getToken.get_admin_token(api_server),api_server,target_path)
