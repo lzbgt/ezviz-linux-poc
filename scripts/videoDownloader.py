@@ -568,7 +568,7 @@ if __name__ == "__main__":
     env = dict()
     env["appKey"] = os.getenv("EZ_APPKEY", "a287e05ace374c3587e051db8cd4be82")
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.148")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))

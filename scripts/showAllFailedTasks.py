@@ -27,7 +27,7 @@ class TasksMgr(object):
 
 if __name__ == "__main__":
     env = {}
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.148")#"172.16.20.4")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
 
     app = TasksMgr(env)
@@ -36,6 +36,11 @@ if __name__ == "__main__":
         fs = app.redisConn.smembers(ft)
         for fk in fs:
             fv = app.redisConn.get(fk)
-            log.info("k: {}, v: {}".format(fk.decode('utf-8'), fv.decode('utf-8')))
-
-    pass
+            log.info("ft: {}, k: {}, v: {}".format(ft.decode('utf-8'),fk.decode('utf-8'), fv.decode('utf-8')))
+    # show devices
+    devicesKey = app.redisConn.keys("ezvadevices:*")
+    for dk in devicesKey:
+        devComp = app.redisConn.get(dk)
+        dev = json.loads(zlib.decompress(devComp).decode('utf-8'))
+        log.info("devices key: {}, len: {}".format(dk, len(dev)))
+        log.info("\tdevs: {}".format(dev))
