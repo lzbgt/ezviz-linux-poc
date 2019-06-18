@@ -38,4 +38,10 @@ if __name__ == "__main__":
             fv = app.redisConn.get(fk)
             log.info("ft: {}, k: {}, v: {}".format(ft.decode('utf-8'),fk.decode('utf-8'), fv.decode('utf-8')))
 
-    pass
+    # show devices
+    devicesKey = app.redisConn.keys("ezvadevices:*")
+    for dk in devicesKey:
+        devComp = app.redisConn.get(dk)
+        dev = json.loads(zlib.decompress(devComp).decode('utf-8'))
+        log.info("devices key: {}, len: {}".format(dk, len(dev)))
+        log.info("\tdevs: {}".format(dev))
