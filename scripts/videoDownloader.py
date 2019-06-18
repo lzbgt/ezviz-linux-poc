@@ -27,7 +27,7 @@ class VideoDownloader(object):
         return 'ezvt:'  + devSn + ':' + str(startTimeTs) + ':' + str(endTimeTs) + ':' + recType
 
     def makeFailedVTasksKey(self, devSn):
-        return 'ezvts:failed:' + str(env["startTimeTs"]) + ':' + str(env["endTimeTs"]) + ":devSn"
+        return 'ezvts:failed:' + str(env["startTimeTs"]) + ':' + str(env["endTimeTs"]) + ":" + devSn
 
     @staticmethod
     def makeVTasksKey(devSn):
