@@ -36,6 +36,6 @@ if __name__ == "__main__":
         fs = app.redisConn.smembers(ft)
         for fk in fs:
             fv = app.redisConn.get(fk)
-            log.info("k: {}, v: {}".format(fk.decode('utf-8'), fv.decode('utf-8')))
+            log.info("ft: {}, k: {}, v: {}".format(ft.decode('utf-8'),fk.decode('utf-8'), fv.decode('utf-8')))
 
     pass

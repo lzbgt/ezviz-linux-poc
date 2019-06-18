@@ -156,7 +156,7 @@ class VideoDownloader(object):
         
         rj = r.json()
         rp = rj["page"]
-        #log.info("\n\n{}".format(rp))
+        log.info("\n\n{}".format(rp))
         total = rp["total"]
         currPage = rp["page"]
         currNum = rp["size"]
@@ -165,6 +165,7 @@ class VideoDownloader(object):
         # has more?
         while currNum < total:
             data["pageStart"] = data["pageStart"] + 1
+            log.info("getting devices: {}".format(data))
             r = requests.post(url, data=data)
             if r.status_code != 200 and r.json().get("code") != "200":
                 log.error("failed request devices list. " + r.text)
