@@ -2,7 +2,6 @@ FROM centos:7
 
 LABEL MAINTAINER="Bruce.Lu"
 LABEL EMAIL="lzbgt@icloud.com"
-COPY requestments.txt /
 WORKDIR /apps/ezviz/
 ENV LD_LIBRARY_PATH=/apps/ezviz/libs:/apps/ezviz/thirdparty/EZServerOpenSDK/lib/linux64:${LD_LIBRARY_PATH}
 ENV PATH=/opt/rh/rh-python36/root/bin:$PATH
