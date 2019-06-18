@@ -8,15 +8,17 @@ ENV PATH=/opt/rh/rh-python36/root/bin:$PATH
 
 RUN curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && yum update -y
 
-RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7 && yum install epel-release -y && yum install python-pip -y 
+RUN rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7 && yum install epel-release -y 
 
-RUN yum install -y git wget centos-release-scl rh-python36&& \
-mkdir -p /apps/ezviz && cd /apps/ezviz && \
-git clone --depth 1 https://github.com/lzbgt/ezviz-linux-poc . && \
+RUN yum install -y git wget centos-release-scl && \
+yum install -y rh-python36 && \
 pip3 install requests redis && \
-rm -fr ezviz && \
-wget https://github.com/lzbgt/ezviz-linux-poc/releases/download/0.0.1-alpha-cmd/ezviz && \
-rm -fr src *.go && \
-rm -fr /var/cache/*
+mkdir -p /apps/ezviz && cd /apps/ezviz && \
+git clone --depth 1 https://github.com/lzbgt/ezviz-linux-poc /tmp/repo && \
+mv /tmp/repo/thirdparty /apps/ezviz/ && \
+mv /tmp/repo/libs /apps/ezviz/ && \
+wget https://github.com/lzbgt/ezviz-linux-poc/raw/master/scripts/ezviz-cmd && \
+rm -fr /var/cache/* && \
+rm -fr /tmp/repo
 
-CMD ["python", "/apps/ezviz/scripts/videoSchedDownloader.py"]
+CMD ["python3", "/apps/ezviz/scripts/videoDownloader.py"]
