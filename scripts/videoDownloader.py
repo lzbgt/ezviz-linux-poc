@@ -8,7 +8,7 @@ __maintainer__ = "Bruce.Lu"
 __email__ = "lzbgt@icloud.com"
 __status__ = "ALPHA"
 
-import os, sys, time, datetime, re, json, shutil, threading, random, logging
+import os, sys, time, datetime, re, json, shutil, threading, random, concurrent.futures, logging
 from  multiprocessing import Pool, Process
 from multiprocessing.pool import ThreadPool
 from subprocess import Popen, PIPE, DEVNULL
@@ -95,7 +95,7 @@ class VideoDownloader(object):
                 # liveness check
                 delta = now - lastHeartBeatTs
                 log.info("checkpoint delta: {}, thisApp: {}, other:{}".format(delta, self.appId, appId))
-                if  delta > 20:
+                if  delta > env["heartBeatSecs"] + 10:
                     # 30s no heartbeat, rerun
                     return True, status, retries, ts, appId
                 else:
@@ -149,6 +149,7 @@ class VideoDownloader(object):
         devices = []
         url = "https://open.ys7.com/api/lapp/device/list"
         data = {"accessToken": self.env["token"], "pageStart": 0, "pageSize": 50}
+        log.info('{}'.format(data))
         r = requests.post(url, data=data)
         if r.status_code != 200 and r.json().get("code") != "200":
             log.error("failed request devices list. " + r.text)
@@ -194,11 +195,11 @@ class VideoDownloader(object):
         currNum = 0
         ret = []
         url = "https://open.ys7.com/api/lapp/alarm/device/list"
-        data = {"accessToken":"at.957mvxyr5jb83w9056myl66fcu8kyhl3-4n5k20fl3x-1pg85jt-ony0xd8xb",
-        "deviceSerial":sn,"startTime":startTime,"endTime":endTime,"status":status,"pageSize":"50", "pageStart": 0}
+        data = {"accessToken": self.env["token"],
+        "deviceSerial":sn, "startTime":startTime, "endTime":endTime, "status":status, "pageSize":"50", "pageStart": 0}
         while currNum < total:
             r = requests.post(url, data=data)
-            log.info(json.dumps(data))
+            log.info("get alarms: {}".format(data))
             if r.status_code != 200 and r.json().get("code") != "200":
                 log.error("failed to get alarm for device {}. {}".format(sn, r.text))
                 exit(1)
@@ -253,7 +254,7 @@ class VideoDownloader(object):
         failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
         hasFailedTask = False
-        for vs in vss[:]:
+        for vs in vss[:2]:
             v = vs["video"]
             alarmPic = vs['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
@@ -417,8 +418,8 @@ class VideoDownloader(object):
         log.info("try to load redis stored data first")
         vadata = redisConn.get(vadataKey)
         vadevices = redisConn.get(vadevicesKey)
-
         if vadata is not None and vadevices is not None:
+            log.info("processing stored redis data")
             vadataunzip = zlib.decompress(vadata)
             del vadata
             vadevicesunzip = zlib.decompress(vadevices)
@@ -430,6 +431,7 @@ class VideoDownloader(object):
             del vadevicesunzip
             loadedFromRedis = True
 
+        log.info("try to get devices list")
         if devices is None:
             devices = self.getDeviceList()
             if devices is None or len(devices) == 0:
@@ -539,58 +541,59 @@ class VideoDownloader(object):
 
         # store appId
         self.refreshLiveness()
+    
+        workQueue = matchedDevVideos[:2]
+        resultQueue = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=env["numConcurrent"]) as executor:
+            while len(workQueue) > 0:
+                resultQueue = {executor.submit(self.videoDownload, dv):dv for dv in workQueue}
+                workQueue = ()
 
-        hasFailure = True
-        while hasFailure == True:
-            hasFailure = False
-            tp = ThreadPool(env["numConcurrent"])
-            self.threadResults = []
-            self.threadErrResults = []
-            tph = tp.map_async(self.videoDownload, matchedDevVideos[:], 1, self.threadCb, self.threadErrCb)
-            log.info("pooling..")
-            time.sleep(4)
-            self.refreshLiveness()
-            while True:
-                # 20s
-                tph.wait(20)
-                # TODO: heartbeat
-                self.refreshLiveness()
-                log.info("refreshed")
-                try:
-                    tph.successful()
-                except Exception as e:
-                    #log.error("exception: {}".format(e))
-                    continue
-                # next
-                tp.close()
-                log.info("\n\nresults: {}\n{}\n{}\n".format(self.threadResults,self.threadErrResults,tph.get()))
-                if any(tph.get()):
-                    hasFailure = True            
-                break
+                allDone = False
+                while not allDone:
+                    try:
+                        for future in concurrent.futures.as_completed(resultQueue, env["heartBeatSecs"]):
+                            devVideos = resultQueue[future]
+                            try:
+                                ret = future.result()
+                                log.info("ret: {}".format(ret))
+                            except Exception as ei:
+                                log.error("exception work {} on: {}".format(ei, devVideos))
+                                workQueue.add(devVideos)
+                            else:
+                                if ret != False:
+                                    log.error("failed work on {}".format(devVideos))
+                                    workQueue.add(devVideos)
+                    except Exception as eo:
+                        self.refreshLiveness()
+                    else:
+                        allDone = True
 
 if __name__ == "__main__":
     env = dict()
     env["appKey"] = os.getenv("EZ_APPKEY", "a287e05ace374c3587e051db8cd4be82")
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.131") #"172.16.20.4")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132") #"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
     env['maxRetries'] = int(os.getenv("EZ_MAX_RETRIES", "10"))
+    env["heartBeatSecs"] = int(os.getenv("EZ_HEATBEAT_SECS", "40"))
     env["devicesList"] = os.getenv("EZ_DEVICES_LIST", None)
     env["startOver"] = os.getenv("EZ_START_OVER", "false")
     env["downloaded"] = "downloaded"
 
     # last day
-    startTime = datetime.datetime.fromordinal((datetime.date.today() - datetime.timedelta(days=1)).toordinal())
-    env["startTimeTs"] = int(startTime.timestamp())
+    lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
+    startTime = datetime.datetime.fromordinal(lastDate)
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
-    env["endTimeTs"] = int(endTime.timestamp())
     startTime = startTime.strftime(VideoDownloader.TFSTR)
     endTime = endTime.strftime(VideoDownloader.TFSTR)
     env["startTime"] = os.getenv("EZ_START_TIME", startTime)
     env["endTime"] = os.getenv("EZ_END_TIME", endTime)
-
+    env["startTimeTs"] = VideoDownloader.timeStrToTsInt(env["startTime"])
+    env["endTimeTs"] = VideoDownloader.timeStrToTsInt(env["endTime"])
+    log.info("starTime: {}, {}. endTime: {}, {}".format(env['startTime'], env['startTimeTs'], env['endTime'], env['endTimeTs']))
     log.info("connecting redis")
     redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
     if redisConn is None:
