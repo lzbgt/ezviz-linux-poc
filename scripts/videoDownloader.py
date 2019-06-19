@@ -254,7 +254,7 @@ class VideoDownloader(object):
         failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
         hasFailedTask = False
-        for vs in vss[:2]:
+        for vs in vss[:]:
             v = vs["video"]
             alarmPic = vs['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
@@ -542,7 +542,7 @@ class VideoDownloader(object):
         # store appId
         self.refreshLiveness()
     
-        workQueue = matchedDevVideos[:2]
+        workQueue = matchedDevVideos[:]
         resultQueue = []
         with concurrent.futures.ThreadPoolExecutor(max_workers=env["numConcurrent"]) as executor:
             while len(workQueue) > 0:
