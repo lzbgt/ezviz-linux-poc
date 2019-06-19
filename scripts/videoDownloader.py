@@ -560,11 +560,11 @@ class VideoDownloader(object):
                                 ret = future.result()
                                 log.info("ret: {}".format(ret))
                             except Exception as ei:
-                                log.error("exception work {} on: {}".format(ei, devVideos))
+                                log.error("exception work {} on: {}".format(ei, devVideos['deviceSerial']))
                                 workQueue.add(devVideos)
                             else:
                                 if ret != False:
-                                    log.error("failed work on {}".format(devVideos))
+                                    log.error("failed work on {}".format(devVideos['deviceSerial']))
                                     workQueue.add(devVideos)
                                 else:
                                     del resultQueue[future]
