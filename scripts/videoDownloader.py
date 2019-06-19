@@ -548,30 +548,24 @@ class VideoDownloader(object):
             while len(workQueue) > 0:
                 resultQueue = {executor.submit(self.videoDownload, dv):dv for dv in workQueue}
                 workQueue = ()
-
-                allDone = False
-                while not allDone:
+                
+                self.refreshLiveness()
+                fq = concurrent.futures.as_completed(resultQueue)
+                for future in fq:
+                    devVideos = resultQueue[future]
                     try:
-                        self.refreshLiveness()
-                        fq = concurrent.futures.as_completed(resultQueue, env["heartBeatSecs"])
-                        for future in fq:
-                            devVideos = resultQueue[future]
-                            try:
-                                ret = future.result()
-                                log.info("ret: {}".format(ret))
-                            except Exception as ei:
-                                log.error("exception work {} on: {}".format(ei, devVideos['deviceSerial']))
-                                workQueue.add(devVideos)
-                            else:
-                                if ret != False:
-                                    log.error("failed work on {}".format(devVideos['deviceSerial']))
-                                    workQueue.add(devVideos)
-                                else:
-                                    del resultQueue[future]
-                    except Exception as eo:
-                        pass
+                        ret = future.result()
+                        log.info("ret: {}".format(ret))
+                    except Exception as ei:
+                        log.error("exception work {} on: {}".format(ei, devVideos['deviceSerial']))
+                        workQueue.add(devVideos)
                     else:
-                        allDone = True
+                        if ret != False:
+                            log.error("failed work on {}".format(devVideos['deviceSerial']))
+                            workQueue.add(devVideos)
+                        else:
+                            pass
+           
 
 if __name__ == "__main__":
     env = dict()
