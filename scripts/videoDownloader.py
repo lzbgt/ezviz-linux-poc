@@ -142,6 +142,7 @@ class VideoDownloader(object):
         return self.appId
     
     def refreshLiveness(self):
+        log.info("refersh liveness")
         secs = int(datetime.datetime.now().timestamp())
         redisConn.set(self.makeAppId(), secs)
 
@@ -186,11 +187,8 @@ class VideoDownloader(object):
         # devsn: [video]
         # video: {info, [alarmTs]}
         # info: {sts, ets, recType}
-
-        startTime = datetime.datetime.strptime(startTime, VideoDownloader.TFSTR)
-        startTime = int(startTime.timestamp()*1000)
-        endTime = datetime.datetime.strptime(endTime, VideoDownloader.TFSTR)
-        endTime = int(endTime.timestamp()*1000)
+        startTime = self.env['startTimeTs']
+        endTime = self.env['endTimeTs']
         total = 10000
         currNum = 0
         ret = []
@@ -303,6 +301,8 @@ class VideoDownloader(object):
                         log.info("[SKIP] task was done: {}".format(taskKey))
                     elif status == 1:
                         log.info("[SKIP] task running on other instance alive: {}".format(taskKey))
+                        # indicate this task need to be rechecked
+                        hasFailedTask = True
                     elif retries >= env['maxRetries']:
                         log.info("[SKIP] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
                     else:
@@ -552,7 +552,9 @@ class VideoDownloader(object):
                 allDone = False
                 while not allDone:
                     try:
-                        for future in concurrent.futures.as_completed(resultQueue, env["heartBeatSecs"]):
+                        self.refreshLiveness()
+                        fq = concurrent.futures.as_completed(resultQueue, env["heartBeatSecs"])
+                        for future in fq:
                             devVideos = resultQueue[future]
                             try:
                                 ret = future.result()
@@ -564,8 +566,10 @@ class VideoDownloader(object):
                                 if ret != False:
                                     log.error("failed work on {}".format(devVideos))
                                     workQueue.add(devVideos)
+                                else:
+                                    del resultQueue[future]
                     except Exception as eo:
-                        self.refreshLiveness()
+                        pass
                     else:
                         allDone = True
 
