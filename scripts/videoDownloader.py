@@ -543,7 +543,7 @@ class VideoDownloader(object):
         self.refreshLiveness()
     
         workQueue = matchedDevVideos[:]
-        resultQueue = []
+        resultQueue = None
         with concurrent.futures.ThreadPoolExecutor(max_workers=env["numConcurrent"]) as executor:
             while len(workQueue) > 0:
                 resultQueue = {executor.submit(self.videoDownload, dv):dv for dv in workQueue}
