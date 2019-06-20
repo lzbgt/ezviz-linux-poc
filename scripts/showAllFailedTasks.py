@@ -60,9 +60,9 @@ class TasksMgr(object):
         df = pd.DataFrame.from_records(records, columns=label)
 
         filter  = (df['RecType'] != None)
-        if status is not None:
+        if status is not None and status != "0":
             filter = (df['Status'] == status)
-        if retries is not None:
+        if retries is not None and retries != "-1":
             filter = filter & (df['Retries'] == retries)
         if devsn is not None:
             filter = filter & (df['DevSn'] == devsn)
@@ -84,8 +84,6 @@ if __name__ == "__main__":
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132")#"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     app = TasksMgr(env)
-    args = len(sys.argv)
-
     app.run(*sys.argv[1:])
 
 
