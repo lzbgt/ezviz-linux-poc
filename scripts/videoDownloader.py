@@ -568,7 +568,7 @@ class VideoDownloader(object):
                 for k, v in self.allTasksStatus.items():
                     firstFive = firstFive + 1
                     if v == 1:
-                        if firstFive <= 4:
+                        if firstFive <= 5:
                             log.info("appId: {}, dev: {}, status: {}".format(self.appId, k, v))
                     if v == 2: # failed
                         workQueue.put(allTasks[k])
