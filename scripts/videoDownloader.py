@@ -302,7 +302,7 @@ class VideoDownloader(object):
                     elif status == 1:
                         log.info("[SKIP] task running on other instance alive: {}".format(taskKey))
                         # indicate this task need to be rechecked
-                        #hasFailedTask = True
+                        hasFailedTask = True
                     elif retries >= env['maxRetries']:
                         log.info("[SKIP] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
                     else:
@@ -547,28 +547,32 @@ class VideoDownloader(object):
             workQueue.put(t)
             allTasks[t['deviceSerial']] = t
         self.allTasksStatus = {v['deviceSerial']:0 for _,v in allTasks.items()}
-
         with concurrent.futures.ThreadPoolExecutor(max_workers=env["numConcurrent"]) as executor:
             done = False
             self.refreshLiveness()
+            numSubmitted = 0
             while not done:
                 while not workQueue.empty():
                     dv = workQueue.get()
                     executor.submit(self.videoDownload, dv)
                     # update status to running
                     self.allTasksStatus[dv['deviceSerial']] = 1
+                    numSubmitted = numSubmitted + 1
                     
                 done = True
                 time.sleep(env["heartBeatSecs"]/2)
                 # info
                 self.refreshLiveness()
-
                 # check status
-                firstFive = 0
+                downLoading = 0
+                total = 0
                 for k, v in self.allTasksStatus.items():
+                    total = total + 1
+                    if v == 0:
+                        downLoading = downLoading + 1
                     if v == 1:
-                        firstFive = firstFive + 1
-                        if firstFive <= 5:
+                        downLoading = downLoading + 1
+                        if downLoading <= 5:
                             log.info("running appId: {}, dev: {}, status: {}".format(self.appId, k, v))
                     if v == 2: # failed
                         workQueue.put(allTasks[k])
@@ -576,6 +580,7 @@ class VideoDownloader(object):
                         log.info("requeue dev: {}, status: {}".format(k, v))
                     if v != 3: # success
                         done = False
+                log.info("total remain jobs: {}, downloading: {}, workq: {}, submitted: {}".format(total, downLoading, workQueue.qsize(), numSubmitted))
                     
 
 if __name__ == "__main__":
@@ -584,7 +589,7 @@ if __name__ == "__main__":
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132") #"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
-    env["numConcurrent"] = int(os.getenv("EZ_CONCURENT", "20"))
+    env["numConcurrent"] = int(os.getenv("EZ_CONCURRENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
     env['maxRetries'] = int(os.getenv("EZ_MAX_RETRIES", "10"))
     env["heartBeatSecs"] = int(os.getenv("EZ_HEATBEAT_SECS", "20"))
