@@ -24,11 +24,11 @@ class TasksMgr(object):
         self.redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
         pass
 
-    def run(self, itype):
-        self.getFailedTasks(itype)
+    def run(self, status=None, retries=None, devsn=None):
+        self.getFailedTasks(status, retries, devsn)
 
     def printFull(self,x):
-        pd.set_option('display.max_rows', len(x))
+        pd.set_option('display.max_rows', None)
         pd.set_option('display.max_columns', None)
         pd.set_option('display.width', 2000)
         pd.set_option('display.float_format', '{:20,.2f}'.format)
@@ -41,7 +41,7 @@ class TasksMgr(object):
         pd.reset_option('display.max_colwidth')
 
 
-    def getFailedTasks(self, itype):
+    def getFailedTasks(self, status = None, retries=None, devsn=None):
         failedTasks = self.redisConn.keys("ezvts:failed:*")
         records = []
         for ft in failedTasks:  
@@ -58,11 +58,16 @@ class TasksMgr(object):
         # schema: vs, ve, vt, status, retries, sn, ps, pe, last, app
         label = ('StartTime', 'EndTime', 'RecType', 'Status', 'Retries', 'DevSn', 'PeriodStart', 'PeriodEnd', 'LastSched', 'InstanceId')
         df = pd.DataFrame.from_records(records, columns=label)
-        if itype == 0:
-           df = df.loc[df['Status']=='3', :]
-        else:
-            pass
-            
+
+        filter  = (df['RecType'] != None)
+        if status is not None:
+            filter = (df['Status'] == status)
+        if retries is not None:
+            filter = filter & (df['Retries'] == retries)
+        if devsn is not None:
+            filter = filter & (df['DevSn'] == devsn)
+
+        df = df.loc[filter, :].reset_index()    
 
         self.printFull(df)
 
@@ -79,9 +84,8 @@ if __name__ == "__main__":
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132")#"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     app = TasksMgr(env)
-    if len(sys.argv) == 1:
-        app.run(0)
-    else:
-        app.run(int(sys.argv[1]))
+    args = len(sys.argv)
+
+    app.run(*sys.argv[1:])
 
 
