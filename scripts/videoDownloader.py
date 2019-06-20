@@ -566,13 +566,14 @@ class VideoDownloader(object):
                 # check status
                 firstFive = 0
                 for k, v in self.allTasksStatus.items():
-                    firstFive = firstFive + 1
                     if v == 1:
+                        firstFive = firstFive + 1
                         if firstFive <= 5:
-                            log.info("appId: {}, dev: {}, status: {}".format(self.appId, k, v))
+                            log.info("running appId: {}, queSize: {},  dev: {}, status: {}".format(self.appId, len(workQueue), k, v))
                     if v == 2: # failed
                         workQueue.put(allTasks[k])
-                        log.info("dev: {}, status: {}".format(k, v))
+                        self.allTasksStatus[k] = 0
+                        log.info("requeue dev: {}, status: {}".format(k, v))
                     if v != 3: # success
                         done = False
                     
@@ -593,7 +594,7 @@ if __name__ == "__main__":
 
     # last day
     lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
-    startTime = datetime.datetime.fromordinal(lastDate)
+    startTime = datetime.datetime.fromordinal(lastDate) + datetime.timedelta(hours=8)
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
     startTime = startTime.strftime(VideoDownloader.TFSTR)
     endTime = endTime.strftime(VideoDownloader.TFSTR)
