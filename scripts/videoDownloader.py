@@ -374,6 +374,8 @@ class VideoDownloader(object):
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
                 else:
                     # need retry for other msgCode
+                    if msgCode == 0:
+                        msgCode = 9999
                     if retries >= env['maxRetries']:
                         retries = msgCode
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
