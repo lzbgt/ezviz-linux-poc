@@ -8,7 +8,7 @@ __maintainer__ = "Bruce.Lu"
 __email__ = "lzbgt@icloud.com"
 __status__ = "ALPHA"
 
-import os, sys, time, datetime, re, json, shutil, threading, random, concurrent.futures, logging
+import os, sys, time, datetime, re, json, queue, shutil, threading, random, concurrent.futures, logging
 from  multiprocessing import Pool, Process
 from multiprocessing.pool import ThreadPool
 from subprocess import Popen, PIPE, DEVNULL
@@ -252,7 +252,7 @@ class VideoDownloader(object):
         failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
         hasFailedTask = False
-        for vs in vss[:]:
+        for vs in vss[:2]:
             v = vs["video"]
             alarmPic = vs['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
@@ -302,7 +302,7 @@ class VideoDownloader(object):
                     elif status == 1:
                         log.info("[SKIP] task running on other instance alive: {}".format(taskKey))
                         # indicate this task need to be rechecked
-                        hasFailedTask = True
+                        #hasFailedTask = True
                     elif retries >= env['maxRetries']:
                         log.info("[SKIP] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
                     else:
@@ -386,6 +386,12 @@ class VideoDownloader(object):
 
                 #log.info("moving file from {} to {}".format(fileName, env['downloaded']))
                 #shutil.move(fileName, env["downloaded"] + '/')
+
+        if hasFailedTask:
+            self.allTasksStatus[devSn] = 2
+        else:
+            self.allTasksStatus[devSn] = 3
+
         return hasFailedTask
     def threadCb(self, result):
         self.threadResults.append(result)
@@ -494,8 +500,7 @@ class VideoDownloader(object):
                 tasksKey = self.makeVTasksKey(dev["deviceSerial"])
                 failedTasksKey = self.makeFailedVTasksKey(dev["deviceSerial"])
                 if failedTasksKey is not None:
-                    pass
-                    #redisConn.delete(failedTasksKey)
+                    redisConn.delete(failedTasksKey)
                 if tasksKey is not None:
                     redisConn.delete(tasksKey)
                 if vas is not None:
@@ -539,33 +544,37 @@ class VideoDownloader(object):
         
         log.info("matching result: {}".format(matchedDevVideos))
 
-        # store appId
         self.refreshLiveness()
     
-        workQueue = matchedDevVideos[:]
-        resultQueue = None
+        workQueue = queue.Queue()
+        allTasks = dict()
+
+        for t in matchedDevVideos[:40]:
+            workQueue.put(t)
+            allTasks[t['deviceSerial']] = t
+
+        self.allTasksStatus = {v['deviceSerial']:0 for _,v in allTasks.items()}
+
         with concurrent.futures.ThreadPoolExecutor(max_workers=env["numConcurrent"]) as executor:
-            while len(workQueue) > 0:
-                resultQueue = {executor.submit(self.videoDownload, dv):dv for dv in workQueue}
-                workQueue = ()
-                
+            done = False
+            while not done:
+                while not workQueue.empty():
+                    dv = workQueue.get()
+                    executor.submit(self.videoDownload, dv)
+                    # update status to running
+                    self.allTasksStatus[dv['deviceSerial']] = 1
+                    
+                # check status
+                done = True
+                time.sleep(env["heartBeatSecs"]/2)
                 self.refreshLiveness()
-                fq = concurrent.futures.as_completed(resultQueue)
-                for future in fq:
-                    devVideos = resultQueue[future]
-                    try:
-                        ret = future.result()
-                        log.info("ret: {}".format(ret))
-                    except Exception as ei:
-                        log.error("exception work {} on: {}".format(ei, devVideos['deviceSerial']))
-                        workQueue.add(devVideos)
-                    else:
-                        if ret != False:
-                            log.error("failed work on {}".format(devVideos['deviceSerial']))
-                            workQueue.add(devVideos)
-                        else:
-                            pass
-           
+                for k, v in self.allTasksStatus.items():
+                    if v == 2: # failed
+                        workQueue.put(allTasks[k])
+                        log.info("dev: {}, status: {}".format(k, v))
+                    if v != 3: # success
+                        done = False
+                    
 
 if __name__ == "__main__":
     env = dict()
@@ -576,7 +585,7 @@ if __name__ == "__main__":
     env["numConcurrent"] = int(os.getenv("EZ_CONCURENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
     env['maxRetries'] = int(os.getenv("EZ_MAX_RETRIES", "10"))
-    env["heartBeatSecs"] = int(os.getenv("EZ_HEATBEAT_SECS", "40"))
+    env["heartBeatSecs"] = int(os.getenv("EZ_HEATBEAT_SECS", "20"))
     env["devicesList"] = os.getenv("EZ_DEVICES_LIST", None)
     env["startOver"] = os.getenv("EZ_START_OVER", "false")
     env["downloaded"] = "downloaded"
