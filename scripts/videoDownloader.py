@@ -252,7 +252,7 @@ class VideoDownloader(object):
         failedTasksKey = app.makeFailedVTasksKey(devSn)
         #log.info("videos: \n{}\n\n\n\n vs:\n{}".format(videos, vss))
         hasFailedTask = False
-        for vs in vss[:2]:
+        for vs in vss[:]:
             v = vs["video"]
             alarmPic = vs['alarms'][0]['alarmPicUrl']
             startTime = app.tsIntToTimeStr(v["startTime"])
@@ -383,9 +383,6 @@ class VideoDownloader(object):
                 redisConn.set(taskKey, app.makeVTaskValue(self.appId, 2, retries))
                 redisConn.srem(tasksKey, taskKey)
                 #redisConn.srem(failedTasksKey, taskKey)
-
-                #log.info("moving file from {} to {}".format(fileName, env['downloaded']))
-                #shutil.move(fileName, env["downloaded"] + '/')
 
         if hasFailedTask:
             self.allTasksStatus[devSn] = 2
@@ -543,20 +540,17 @@ class VideoDownloader(object):
         del alarmVideos
         
         log.info("matching result: {}".format(matchedDevVideos))
-
-        self.refreshLiveness()
     
         workQueue = queue.Queue()
         allTasks = dict()
-
-        for t in matchedDevVideos[:40]:
+        for t in matchedDevVideos[:]:
             workQueue.put(t)
             allTasks[t['deviceSerial']] = t
-
         self.allTasksStatus = {v['deviceSerial']:0 for _,v in allTasks.items()}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=env["numConcurrent"]) as executor:
             done = False
+            self.refreshLiveness()
             while not done:
                 while not workQueue.empty():
                     dv = workQueue.get()
@@ -564,11 +558,18 @@ class VideoDownloader(object):
                     # update status to running
                     self.allTasksStatus[dv['deviceSerial']] = 1
                     
-                # check status
                 done = True
                 time.sleep(env["heartBeatSecs"]/2)
+                # info
                 self.refreshLiveness()
+
+                # check status
+                firstFive = 0
                 for k, v in self.allTasksStatus.items():
+                    firstFive = firstFive + 1
+                    if v == 1:
+                        if firstFive <= 4:
+                            log.info("dev: {}, status: {}".format(k, v))
                     if v == 2: # failed
                         workQueue.put(allTasks[k])
                         log.info("dev: {}, status: {}".format(k, v))
