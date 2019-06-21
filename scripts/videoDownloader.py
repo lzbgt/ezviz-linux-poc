@@ -376,7 +376,7 @@ class VideoDownloader(object):
                 
                 redisConn.sadd(failedTasksKey, taskKey)
 
-                if env['forceRetry'] == 'false':
+                if env['forceRetry'] != 'true':
                     # device offline, file not found & max connection
                     if msgCode == 5404:
                         redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
