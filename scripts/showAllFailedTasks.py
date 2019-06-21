@@ -24,8 +24,8 @@ class TasksMgr(object):
         self.redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
         pass
 
-    def run(self, status=None, retries=None, devsn=None):
-        self.getFailedTasks(status, retries, devsn)
+    def run(self, status=None, retries=None, devsn=None, start=None, appId=None):
+        self.getFailedTasks(status, retries, devsn, start, appId)
 
     def printFull(self,x):
         pd.set_option('display.max_rows', None)
@@ -41,7 +41,7 @@ class TasksMgr(object):
         pd.reset_option('display.max_colwidth')
 
 
-    def getFailedTasks(self, status = None, retries=None, devsn=None):
+    def getFailedTasks(self, status = None, retries=None, devsn=None, start=None, appId=None):
         failedTasks = self.redisConn.keys("ezvts:failed:*")
         records = []
         for ft in failedTasks:  
@@ -60,15 +60,18 @@ class TasksMgr(object):
         df = pd.DataFrame.from_records(records, columns=label)
 
         filter  = (df['RecType'] != None)
-        if status is not None and status != "0":
+        if status is not None and status != "none":
             filter = (df['Status'] == status)
-        if retries is not None and retries != "-1":
+        if retries is not None and retries != "none":
             filter = filter & (df['Retries'] == retries)
-        if devsn is not None:
+        if devsn is not None and devsn != "none":
             filter = filter & (df['DevSn'] == devsn)
+        if start is not None and start != "none":
+            filter = filter & (df['PeroidStart'] == start)
+        if appId is not None and appId != "none":
+            filter = filter & (df['InstanceId'] == appId)
 
-        df = df.loc[filter, :].reset_index()    
-
+        df = df.loc[filter, :].sort_values(by=['PeriodStart'], ascending=False).reset_index()
         self.printFull(df)
 
     def getDevices(self):
@@ -79,11 +82,29 @@ class TasksMgr(object):
             log.info("devices key: {}, len: {}".format(dk, len(dev)))
             log.info("\tdevs: {}".format(dev))
 
+def usage():
+    usage = '''PARAM Sequence: <status> <retries> <devsn> <period_start> <instance_id>
+    status: 3 - failed; 2 - suceessed; 1 - processing; None - any
+    retries: N - number; None - any
+    devsn: Cxxxx; None - any
+    period_start: None - any
+examples:
+1. check all failed job on specified instance
+    3, None, None, None, 140571204925248
+2. check all failed job on specified device
+    3, None, C90840812
+    '''
+    print(usage)
+
 if __name__ == "__main__":
     env = {}
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132")#"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     app = TasksMgr(env)
+    if sys.argv[1] and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
+        usage()
+        exit(0)
+
     app.run(*sys.argv[1:])
 
 

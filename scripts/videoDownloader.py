@@ -582,7 +582,7 @@ class VideoDownloader(object):
                         log.info("requeue dev: {}, status: {}".format(k, v))
                     if v != 3: # success
                         done = False
-                log.info("total remain jobs: {}, downloading: {}, workq: {}, submitted: {}".format(total, downLoading, workQueue.qsize(), numSubmitted))
+                log.info("total jobs: {}, downloading: {}, workq: {}, submitted: {}".format(total, downLoading, workQueue.qsize(), numSubmitted))
                     
 
 if __name__ == "__main__":
@@ -601,7 +601,7 @@ if __name__ == "__main__":
 
     # last day
     lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
-    startTime = datetime.datetime.fromordinal(lastDate) + datetime.timedelta(hours=8)
+    startTime = datetime.datetime.fromordinal(lastDate) - datetime.timedelta(hours=8)
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
     startTime = startTime.strftime(VideoDownloader.TFSTR)
     endTime = endTime.strftime(VideoDownloader.TFSTR)
