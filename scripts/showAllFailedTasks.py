@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 class TasksMgr(object):
     def __init__(self, env):
         self.redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
+        self.csv = False
         pass
 
     def run(self, status=None, retries=None, devsn=None, start=None, appId=None):
@@ -71,8 +72,10 @@ class TasksMgr(object):
         if appId is not None and appId != "none":
             filter = filter & (df['InstanceId'] == appId)
 
-        df = df.loc[filter, :].sort_values(by=['PeriodStart'], ascending=False).reset_index()
+        df = df.loc[filter, :].sort_values(by=['PeriodStart', 'DevSn', 'LastSched'], ascending=False).reset_index()
         self.printFull(df)
+        if self.csv:
+            df.to_csv(r'failed_veidos.csv')
 
     def getDevices(self):
         devicesKey = app.redisConn.keys("ezvadevices:*")
@@ -101,11 +104,16 @@ if __name__ == "__main__":
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132")#"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     app = TasksMgr(env)
+    args = len(sys.argv)
+    skip = 0
+    if args > 1 and 'csv' in sys.argv[args-1]:
+        skip = 1
+        app.csv = True
     for arg in sys.argv:
         if arg == "-h" or arg == "--help":
             usage()
             exit(0)
 
-    app.run(*sys.argv[1:])
+    app.run(*sys.argv[1:(args - skip)])
 
 
