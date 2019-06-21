@@ -286,7 +286,6 @@ class VideoDownloader(object):
             numRunning = redisConn.scard(tasksKey)
             if numRunning >= 3:
                log.warning("[SKIP-DEVICE] running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
-               hasFailedTask = True
                break
 
             taskVal = redisConn.get(taskKey)
@@ -299,6 +298,7 @@ class VideoDownloader(object):
 
                 #log.info("check status2. type appId:{}".format(type(appId)))
                 if again == False:
+                    forceRetry = False;
                     if status == 2:
                         log.info("[SKIP] task was done: {}".format(taskKey))
                     elif status == 1:
@@ -306,11 +306,18 @@ class VideoDownloader(object):
                         # indicate this task need to be rechecked
                         hasFailedTask = True
                     elif retries >= env['maxRetries']:
-                        log.info("[SKIP] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
+                        if env["forceRetry"] == 'false':
+                            log.info("[SKIP] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
+                        else:
+                            forceRetry = True
+                            log.info("[FORCE-RETRY] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
                     else:
                         delta = int(datetime.datetime.now().timestamp()) - ts
                         log.info("[UNKOWN] task: {}, taskAppId: {}, instanceId:{}, delta-secs:{}".format(taskKey, appId, self.appId, delta))
-                    continue
+                    if forceRetry:
+                        pass
+                    else:
+                        continue
                 else:
                     if status == 1:
                         log.info("[RETAKE] other instance dead before task done, retake: {}".format(taskKey))
@@ -368,29 +375,34 @@ class VideoDownloader(object):
                 log.info("\n\n\ndownload failed:{},{} {}, {}, {}, {}\n\n\n".format(msgCode, evType, devSn, startTime, endTime, recType))
                 
                 redisConn.sadd(failedTasksKey, taskKey)
-                
-                # device offline, file not found & max connection
-                if msgCode == 5404:
-                    redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
-                elif msgCode == 5402:
-                    redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
-                elif msgCode == 5416:
-                    # skip this device
-                    hasFailedTask = True
-                    break
+
+                if env['forceRetry'] == 'false':
+                    # device offline, file not found & max connection
+                    if msgCode == 5404:
+                        redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                    elif msgCode == 5402:
+                        redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                    elif msgCode == 5416:
+                        # skip this device
+                        hasFailedTask = True
+                        break
+                    else:
+                        # need retry for other msgCode
+                        if msgCode == 0:
+                            msgCode = 9999
+                        if retries >= env['maxRetries']:
+                            retries = msgCode
+                        redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
+                        hasFailedTask = True
                 else:
-                    # need retry for other msgCode
                     if msgCode == 0:
-                        msgCode = 9999
-                    if retries >= env['maxRetries']:
-                        retries = msgCode
+                            msgCode = 9999
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId, 3, retries))
                     hasFailedTask = True
             else:
                 log.info("\n\ndownload success: {}, {}, {}, {}\n\n".format(devSn, startTime, endTime, recType))
                 redisConn.set(taskKey, app.makeVTaskValue(self.appId, 2, retries))
                 redisConn.srem(tasksKey, taskKey)
-                #redisConn.srem(failedTasksKey, taskKey)
 
         if hasFailedTask:
             self.allTasksStatus[devSn] = 2
@@ -603,6 +615,7 @@ if __name__ == "__main__":
     env["heartBeatSecs"] = int(os.getenv("EZ_HEATBEAT_SECS", "20"))
     env["devicesList"] = os.getenv("EZ_DEVICES_LIST", None)
     env["startOver"] = os.getenv("EZ_START_OVER", "false")
+    env["forceRetry"] = os.getenv("EZ_FORCE_RETRY", "false")
     env["downloaded"] = "downloaded"
 
     # last day

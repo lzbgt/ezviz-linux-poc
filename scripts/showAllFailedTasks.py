@@ -23,10 +23,42 @@ class TasksMgr(object):
     def __init__(self, env):
         self.redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
         self.csv = False
+        self.appKey = 'a287e05ace374c3587e051db8cd4be82'
+        self.appSecret = 'f01b61048a1170c4d158da3752e4378d'
+        self.getToken()
         pass
 
     def run(self, status=None, retries=None, devsn=None, start=None, appId=None):
         self.getFailedTasks(status, retries, devsn, start, appId)
+
+    def getToken(self):
+        data = {"appKey": self.appKey, "appSecret": self.appSecret}
+        url = "https://open.ys7.com/api/lapp/token/get"
+        r = requests.post(url, data=data)
+        if r.status_code != 200 and r.json().get("code") != "200":
+            log.error("failed request yscloud token. " + r.text)
+            exit(1)
+
+        if r.json().get("data") is None:
+            log.error("failed get token")
+            exit(1)
+        self.token = r.json()["data"]["accessToken"]
+
+    def checkOnline(self, devSn):
+        data = {'accessToken': self.token, 'deviceSerial': devSn}
+        url = 'https://open.ys7.com/api/lapp/device/info'
+        r = requests.post(url, data=data)
+        if r.status_code != 200 and r.json().get("code") != "200":
+            log.error("failed request yscloud token. " + r.text)
+            exit(1)
+
+        if r.json().get("data") is None:
+            log.error("failed get token")
+            exit(1)
+
+        online = True if r.json()['data']['status'] == 1 else False
+        encry = True if r.json()['data']['isEncrypt'] == 1 else False
+        return online, encry
 
     def printFull(self,x):
         pd.set_option('display.max_rows', None)
@@ -59,6 +91,7 @@ class TasksMgr(object):
         # schema: vs, ve, vt, status, retries, sn, ps, pe, last, app
         label = ('StartTime', 'EndTime', 'RecType', 'Status', 'Retries', 'DevSn', 'PeriodStart', 'PeriodEnd', 'LastSched', 'InstanceId')
         df = pd.DataFrame.from_records(records, columns=label)
+        rawDf = df.copy()
 
         filter  = (df['RecType'] != None)
         if status is not None and status != "none":
@@ -76,6 +109,19 @@ class TasksMgr(object):
         self.printFull(df)
         if self.csv:
             df.to_csv(r'failed_veidos.csv')
+        
+        if status == '3':
+            # check device online
+            onlines = []
+            df = rawDf.loc[(rawDf['Status'] == '3') & (rawDf['Retries'] == '5404'), :]
+            failedDevs = df['DevSn'].unique()
+            log.info("checking offile devices: {}".format(failedDevs))
+            for dev in failedDevs:
+                onLine,encry = self.checkOnline(dev)
+                onlines.append((dev, onLine, encry))
+            
+            devOnline_df = pd.DataFrame.from_records(onlines, columns=('DevSn', 'Online', 'Encryption')).sort_values(by=['Online']).reset_index()
+            self.printFull(devOnline_df)
 
     def getDevices(self):
         devicesKey = app.redisConn.keys("ezvadevices:*")
