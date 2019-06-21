@@ -84,15 +84,15 @@ class TasksMgr(object):
 
 def usage():
     usage = '''PARAM Sequence: <status> <retries> <devsn> <period_start> <instance_id>
-    status: 3 - failed; 2 - suceessed; 1 - processing; None - any
-    retries: N - number; None - any
-    devsn: Cxxxx; None - any
-    period_start: None - any
+    status: 3 - failed; 2 - suceessed; 1 - processing; none - any
+    retries: N - number; none - any
+    devsn: Cxxxx; none - any
+    period_start: none - any
 examples:
 1. check all failed job on specified instance
-    3, None, None, None, 140571204925248
+    3, none, none, none, 140571204925248
 2. check all failed job on specified device
-    3, None, C90840812
+    3, none, C90840812
     '''
     print(usage)
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132")#"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     app = TasksMgr(env)
-    if sys.argv[1] and (sys.argv[1] == "-h" or sys.argv[1] == "--help"):
+    if len(sys.argv) == 1 or (sys.argv[1] and (sys.argv[1] == "-h" or sys.argv[1] == "--help")):
         usage()
         exit(0)
 

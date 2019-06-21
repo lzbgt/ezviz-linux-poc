@@ -601,7 +601,7 @@ if __name__ == "__main__":
 
     # last day
     lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
-    startTime = datetime.datetime.fromordinal(lastDate) - datetime.timedelta(hours=8)
+    startTime = datetime.datetime.fromordinal(lastDate) - datetime.timedelta(hours=0)
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
     startTime = startTime.strftime(VideoDownloader.TFSTR)
     endTime = endTime.strftime(VideoDownloader.TFSTR)
