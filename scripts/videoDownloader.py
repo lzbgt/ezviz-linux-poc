@@ -283,9 +283,11 @@ class VideoDownloader(object):
                     if a:
                         redisConn.srem(tasksKey, tk)
             
-            #numRunning = redisConn.scard(tasksKey)
-            #if numRunning >= 3:
-            #    log.warning("[SKIP] running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
+            numRunning = redisConn.scard(tasksKey)
+            if numRunning >= 3:
+               log.warning("[SKIP-DEVICE] running seesion for {} is more than 3, may result in 0 sized file.".format(devSn))
+               hasFailedTask = True
+               break
 
             taskVal = redisConn.get(taskKey)
             #log.info("redis taskval:{}, thisAppId: {}".format(taskVal, self.appId))
@@ -367,11 +369,15 @@ class VideoDownloader(object):
                 
                 redisConn.sadd(failedTasksKey, taskKey)
                 
-                # device offline & file not found
+                # device offline, file not found & max connection
                 if msgCode == 5404:
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
                 elif msgCode == 5402:
                     redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                elif msgCode == 5416:
+                    # skip this device
+                    hasFailedTask = True
+                    break
                 else:
                     # need retry for other msgCode
                     if msgCode == 0:
