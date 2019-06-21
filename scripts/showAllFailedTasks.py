@@ -83,7 +83,7 @@ class TasksMgr(object):
             log.info("\tdevs: {}".format(dev))
 
 def usage():
-    usage = '''PARAM Sequence: <status> <retries> <devsn> <period_start> <instance_id>
+    usage = '''Usage: <status> <retries> <devsn> <period_start> <instance_id>
     status: 3 - failed; 2 - suceessed; 1 - processing; none - any
     retries: N - number; none - any
     devsn: Cxxxx; none - any
@@ -101,9 +101,10 @@ if __name__ == "__main__":
     env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132")#"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     app = TasksMgr(env)
-    if len(sys.argv) == 1 or (sys.argv[1] and (sys.argv[1] == "-h" or sys.argv[1] == "--help")):
-        usage()
-        exit(0)
+    for arg in sys.argv:
+        if arg == "-h" or arg == "--help":
+            usage()
+            exit(0)
 
     app.run(*sys.argv[1:])
 
