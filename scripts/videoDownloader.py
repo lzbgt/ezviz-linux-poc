@@ -94,8 +94,8 @@ class VideoDownloader(object):
             #log.info("appId: {}, thisId:{}".format(appId, self.appId))
             if appId == self.appId:
                 # should run again
-                log.info("[BUG] had run on this instance, but need rerun")
-                return True, status, retries, ts, appId
+                log.info("[BUG?] had run on this instance, is still running")
+                return False, status, retries, ts, appId
             else:
                 lastHeartBeatTs = int(redisConn.get(appId))
                 now = int(datetime.datetime.now().timestamp())
@@ -392,11 +392,11 @@ class VideoDownloader(object):
                         # skip this device, no retry
                         break
                     elif msgCode == 5402:
-                        # skip this device, no retry
-                        redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
-                        break
+                        # skip this video
+                        redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5402))
+                        continue
                     elif msgCode == 5416:
-                        # skip this device and add to retry
+                        # skip this device and add to retry later
                         hasFailedTask = True
                         break
                     else:
@@ -618,12 +618,15 @@ class VideoDownloader(object):
                 # check status
                 downLoading = 0
                 total = 0
+                downloadingDetails = []
                 for k, v in self.allTasksStatus.items():
                     total = total + 1
                     if v == 0:
                         downLoading = downLoading + 1
+                        downloadingDetails.append((k, v))
                     if v == 1:
                         downLoading = downLoading + 1
+                        downloadingDetails.append((k, v))
                         if downLoading <= 5:
                             log.info("running appId: {}, dev: {}, status: {}".format(self.appId, k, v))
                     if v == 2: # failed
@@ -633,7 +636,8 @@ class VideoDownloader(object):
                     if v != 3: # success
                         done = False
                 log.info("total jobs: {}, downloading: {}, workq: {}, submitted: {}".format(total, downLoading, workQueue.qsize(), numSubmitted))
-                    
+                if len(downloadingDetails) <= 5:
+                    log.info("downloading details: {}".format(downloadingDetails))
 
 if __name__ == "__main__":
     env = dict()
