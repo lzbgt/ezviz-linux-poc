@@ -6,7 +6,7 @@ WORKDIR /apps/ezviz/scripts
 ENV LD_LIBRARY_PATH=/apps/ezviz/libs:/apps/ezviz/thirdparty/EZServerOpenSDK/lib/linux64:${LD_LIBRARY_PATH}
 ENV PATH=/opt/rh/rh-python36/root/bin:$PATH
 
-RUN curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo && yum update -y && \
+RUN curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo && yum update -y && \
 rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7 && yum install epel-release -y && \
 yum install -y git wget centos-release-scl && \
 yum install -y rh-python36 && \

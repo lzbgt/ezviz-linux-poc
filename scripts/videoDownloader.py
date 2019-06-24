@@ -22,13 +22,17 @@ redisConn = None
 
 class VideoDownloader(object):
     TFSTR = "%Y-%m-%d %H:%M:%S"
+
+    @staticmethod
+    def makeAppLockKey(startTimeTs, endTimeTs):
+        return 'ezvt:lock:' + str(startTimeTs) + ':' + str(endTimeTs) + ':' + str(int(datetime.datetime.now().timestamp()))
+
     @staticmethod
     def makeVTaskKey(devSn, startTimeTs, endTimeTs, recType):
         return 'ezvt:'  + devSn + ':' + str(startTimeTs) + ':' + str(endTimeTs) + ':' + recType
 
     def makeFailedVTasksKey(self, devSn):
         return 'ezvts:failed:' + str(env["startTimeTs"]) + ':' + str(env["endTimeTs"]) + ":" + devSn
-
     @staticmethod
     def makeVTasksKey(devSn):
         return 'ezvts:' + devSn
@@ -437,6 +441,23 @@ class VideoDownloader(object):
         loadedFromRedis = False
         numCalc = 0
 
+        appLock = redisConn.get(self.makeAppLockKey(env['startTimeTs'], env['endTimeTs']))
+        if appLock:
+            while True:
+                appLock = int(appLock.decode('utf-8').split(':')[-1])
+                # check locker lifetime
+                if appLock == 0:
+                    break;
+                now = int(datetime.datetime.now().timestamp())
+                delta = now - int(appLock)
+                if delta > 30 * 60:
+                    redisConn.set(self.makeAppLockKey(env['startTimeTs'], env['endTimeTs']), str(now))
+                    break
+                time.sleep(30)
+        else:
+            now = int(datetime.datetime.now().timestamp())
+            redisConn.set(self.makeAppLockKey(env['startTimeTs'], env['endTimeTs']), str(now))
+
         os.makedirs(env["downloaded"], exist_ok=True)
         vadataKey = self.makeVADataKey(self.timeStrToTsInt(self.env["startTime"]), self.timeStrToTsInt(self.env["endTime"]))
         vadevicesKey = self.makeVADevicesKey(self.timeStrToTsInt(self.env["startTime"]), self.timeStrToTsInt(self.env["endTime"]))
@@ -528,8 +549,9 @@ class VideoDownloader(object):
                         #log.info("matched {}-{}:{} -> {}".format(iv, i, v, thisAlarms[i]["alarmTime"]))
                         matchedAlarms.append({'alarmTime': thisAlarms[i]["alarmTime"], 'alarmPicUrl': thisAlarms[i]["alarmPicUrl"]})
                     pass # alarm
-                    alarmVideos[dev["deviceSerial"]].append({"video": v, "alarms": matchedAlarms})
-                    numCalc = numCalc + 1
+                    if len(matchedAlarms) > 0:
+                        alarmVideos[dev["deviceSerial"]].append({"video": v, "alarms": matchedAlarms})
+                        numCalc = numCalc + 1
                     iv = iv + 1
                 pass # video
             pass # device
@@ -566,6 +588,8 @@ class VideoDownloader(object):
             del textAlarmVides
             del zippedAlarmVides
             log.info("saved compressed video-alarms data to redis, key: " + vadataKey)
+
+            redisConn.set(self.makeAppLockKey(env['startTimeTs'], env['endTimeTs']), '0')
 
             # store devices to redis
             textDevices = json.dumps(devices)
