@@ -34,6 +34,14 @@ class VideoDownloader(object):
         return 'ezvts:' + devSn
 
     @staticmethod
+    def makeTotalVKey(startTs, endTs):
+        return 'ezvtotal:' + str(startTs) + ':' + str(endTs)
+
+    @staticmethod
+    def makeTotalFilteredVKey(startTs, endTs):
+        return 'ezvtotalflt:' + str(startTs) + ':' + str(endTs)
+
+    @staticmethod
     def makeVTaskValue(appId, status=1, retries=0):
         '''
         status: 1 - in_processing; 2 - done; 3 - failed
@@ -167,7 +175,7 @@ class VideoDownloader(object):
         # has more?
         while currNum < total:
             data["pageStart"] = data["pageStart"] + 1
-            log.info("getting devices: {}".format(data))
+            #log.info("getting devices: {}".format(data))
             r = requests.post(url, data=data)
             if r.status_code != 200 and r.json().get("code") != "200":
                 log.error("failed request devices list. " + r.text)
@@ -187,8 +195,9 @@ class VideoDownloader(object):
         # devsn: [video]
         # video: {info, [alarmTs]}
         # info: {sts, ets, recType}
-        startTime = self.env['startTimeTs']
-        endTime = self.env['endTimeTs']
+        # to utc
+        startTime = self.env['startTimeTs'] - 8 * 60 * 60 * 1000
+        endTime = self.env['endTimeTs'] - 8 * 60 * 60 * 1000
         total = 10000
         currNum = 0
         ret = []
@@ -197,7 +206,7 @@ class VideoDownloader(object):
         "deviceSerial":sn, "startTime":startTime, "endTime":endTime, "status":status, "pageSize":"50", "pageStart": 0}
         while currNum < total:
             r = requests.post(url, data=data)
-            log.info("get alarms: {}".format(data))
+            #log.info("get alarms: {}".format(data))
             if r.status_code != 200 and r.json().get("code") != "200":
                 log.error("failed to get alarm for device {}. {}".format(sn, r.text))
                 exit(1)
@@ -210,7 +219,7 @@ class VideoDownloader(object):
                 data["pageStart"] = data["pageStart"] + 1
                 currNum = currNum + rp["size"]
                 total = rp["total"]
-                log.info("total:{}, curr:{}".format(total, currNum))
+                #log.info("total:{}, curr:{}".format(total, currNum))
                 ret = ret +  rj["data"]
 
         return sorted(ret, key=lambda k: k["alarmTime"])
@@ -422,6 +431,7 @@ class VideoDownloader(object):
         devices = None
         alarmVideos = None
         loadedFromRedis = False
+        numCalc = 0
 
         os.makedirs(env["downloaded"], exist_ok=True)
         vadataKey = self.makeVADataKey(self.timeStrToTsInt(self.env["startTime"]), self.timeStrToTsInt(self.env["endTime"]))
@@ -467,12 +477,25 @@ class VideoDownloader(object):
             self.alarms = dict()
             with ThreadPool(env["numConcurrent"]) as tp:
                 tp.map(self.getAlarmsPar, devices[:])
+            
+            for k,v in self.alarms.items():
+                numCalc = numCalc + len(v)
+
+            log.info('total num of alarms: {}'.format(numCalc))
+            log.info('wait for getting videos ...')
 
             self.videos = dict()
             with ThreadPool(env["numConcurrent"]) as tp:
                 tp.map(self.getVideoListPar, devices[:])
 
+            numCalc = 0
+            for k,v in self.videos.items():
+                numCalc = numCalc + len(v)
+            
+            log.info('total num of videos: {}'.format(numCalc))
+
             alarmVideos = dict()
+            numCalc = 0
             for dev in devices[:]:
                 thisAlarms = self.alarms.get(dev["deviceSerial"])
                 thisVideos = self.videos.get(dev["deviceSerial"])
@@ -502,9 +525,13 @@ class VideoDownloader(object):
                         matchedAlarms.append({'alarmTime': thisAlarms[i]["alarmTime"], 'alarmPicUrl': thisAlarms[i]["alarmPicUrl"]})
                     pass # alarm
                     alarmVideos[dev["deviceSerial"]].append({"video": v, "alarms": matchedAlarms})
+                    numCalc = numCalc + 1
                     iv = iv + 1
                 pass # video
             pass # device
+
+            log.info('total num of matched videos: {}'.format(numCalc))
+            redisConn.set(VideoDownloader.makeTotalVKey(env['startTimeTs'], env['endTimeTs']), numCalc)
 
             # release memory
             del self.alarms
@@ -527,7 +554,6 @@ class VideoDownloader(object):
                         recType = "{}".format(v["video"]["recType"])
                         taskKey = self.makeVTaskKey(dev["deviceSerial"], startTime, endTime, recType)
                         redisConn.delete(taskKey)
-
                 pass
             # store videoAlarm data to redis
             textAlarmVides = json.dumps(alarmVideos)
@@ -549,18 +575,22 @@ class VideoDownloader(object):
 
         # convert to parallel array for multiple threading
         matchedDevVideos = []
+        numCalc = 0
         for dev in devices:
             avs = alarmVideos.get(dev["deviceSerial"])
             if avs is not None and len(avs) != 0:
                 # filter avs
                 avs = [v for v in avs if len(v["alarms"])!=0 and (v["video"]["endTime"] - v["video"]["startTime"]) <= self.env["maxMinutes"] * 60 * 1000 ]
                 if avs is not None and len(avs) != 0:
+                    numCalc = numCalc + len(avs)
                     matchedDevVideos.append({"deviceSerial": dev["deviceSerial"], "videos": avs})
-
         del alarmVideos
         
-        log.info("matching result: {}".format(matchedDevVideos))
-    
+        log.info("total num of filtered videos: {}".format(numCalc))
+
+        exit(0)
+
+        redisConn.set(VideoDownloader.makeTotalFilteredVKey(env['startTimeTs'], env['endTimeTs']), numCalc)
         workQueue = queue.Queue()
         allTasks = dict()
         for t in matchedDevVideos[:]:
@@ -607,7 +637,7 @@ if __name__ == "__main__":
     env = dict()
     env["appKey"] = os.getenv("EZ_APPKEY", "a287e05ace374c3587e051db8cd4be82")
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.132") #"172.16.20.4")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.125") #"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURRENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
@@ -620,7 +650,7 @@ if __name__ == "__main__":
 
     # last day
     lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
-    startTime = datetime.datetime.fromordinal(lastDate) - datetime.timedelta(hours=0)
+    startTime = datetime.datetime.fromordinal(lastDate) + datetime.timedelta(hours=0)
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
     startTime = startTime.strftime(VideoDownloader.TFSTR)
     endTime = endTime.strftime(VideoDownloader.TFSTR)
@@ -628,7 +658,7 @@ if __name__ == "__main__":
     env["endTime"] = os.getenv("EZ_END_TIME", endTime)
     env["startTimeTs"] = VideoDownloader.timeStrToTsInt(env["startTime"])
     env["endTimeTs"] = VideoDownloader.timeStrToTsInt(env["endTime"])
-    log.info("starTime: {}, {}. endTime: {}, {}".format(env['startTime'], env['startTimeTs'], env['endTime'], env['endTimeTs']))
+    log.info("startTime: {}, {}. endTime: {}, {}".format(env['startTime'], env['startTimeTs'], env['endTime'], env['endTimeTs']))
     log.info("connecting redis")
     redisConn = redis.Redis(host=env["redisAddr"], port=env["redisPort"], db=0)
     if redisConn is None:
