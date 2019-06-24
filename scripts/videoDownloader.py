@@ -313,7 +313,7 @@ class VideoDownloader(object):
                     elif status == 1:
                         log.info("[SKIP] task running on other instance alive: {}".format(taskKey))
                         # indicate this task need to be rechecked
-                        hasFailedTask = True
+                        #hasFailedTask = True
                     elif retries >= env['maxRetries']:
                         if env["forceRetry"] == 'false':
                             log.info("[SKIP] task: {}, EZ_MAX_RETRIES: {} reached: {}".format(taskKey, env['maxRetries'], retries))
@@ -389,10 +389,14 @@ class VideoDownloader(object):
                     # device offline, file not found & max connection
                     if msgCode == 5404:
                         redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                        # skip this device, no retry
+                        break
                     elif msgCode == 5402:
+                        # skip this device, no retry
                         redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
+                        break
                     elif msgCode == 5416:
-                        # skip this device
+                        # skip this device and add to retry
                         hasFailedTask = True
                         break
                     else:

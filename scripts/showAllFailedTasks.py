@@ -128,7 +128,7 @@ class TasksMgr(object):
         totals = []
         for k in totalKeys:
             v = self.redisConn.get(k)
-            totals.append((k, v))
+            totals.append((k.decode('utf-8'), v.decode('utf-8')))
         
         df = pd.DataFrame.from_records(totals, columns=('TotalKey', 'Count'))
         df = df.sort_values(by=['TotalKey'])
