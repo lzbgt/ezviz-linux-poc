@@ -588,8 +588,6 @@ class VideoDownloader(object):
         
         log.info("total num of filtered videos: {}".format(numCalc))
 
-        exit(0)
-
         redisConn.set(VideoDownloader.makeTotalFilteredVKey(env['startTimeTs'], env['endTimeTs']), numCalc)
         workQueue = queue.Queue()
         allTasks = dict()

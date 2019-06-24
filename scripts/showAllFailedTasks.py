@@ -123,6 +123,17 @@ class TasksMgr(object):
             devOnline_df = pd.DataFrame.from_records(onlines, columns=('DevSn', 'Online', 'Encryption')).sort_values(by=['Online']).reset_index()
             self.printFull(devOnline_df)
 
+        
+        totalKeys = self.redisConn.keys('ezvtotal*')
+        totals = []
+        for k in totalKeys:
+            v = self.redisConn.get(k)
+            totals.append((k, v))
+        
+        df = pd.DataFrame.from_records(totals, columns=('TotalKey', 'Count'))
+        df = df.sort_values(by=['TotalKey'])
+        self.printFull(df)
+
     def getDevices(self):
         devicesKey = app.redisConn.keys("ezvadevices:*")
         for dk in devicesKey:
