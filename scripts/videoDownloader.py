@@ -12,6 +12,7 @@ import os, sys, time, datetime, re, json, queue, shutil, threading, random, conc
 from  multiprocessing import Pool, Process
 from multiprocessing.pool import ThreadPool
 from subprocess import Popen, PIPE, DEVNULL
+from threading import Timer
 import requests, redis, zlib
  
 logging.basicConfig(level=logging.INFO, stream=sys.stderr,
@@ -351,38 +352,46 @@ class VideoDownloader(object):
             log.info("start cmd with params: {} {} {} {} {} {}".format(startTime, endTime, devSn, appKey, token, recType))
             proc = Popen(["./ezviz-cmd", "records", "get", "1", startTime, endTime, "3", devSn, "123456", appKey, token, recType],
                 bufsize=1, shell=False, stdout=PIPE, stderr=DEVNULL)
-            
+
+            thisTimer = Timer(env['maxTimeOutMinutes'] * 60, proc.kill)
             msgCode = 0
-            evType = 0
-            
+            evType = 0    
             fileName = None
-            for line in proc.stdout:
-                # filename: videos/20190612083439_C90843689_23.mpg 
-                if fileName is None:
-                    f = re.search(r'^filename: (.*?).mpg', line.decode('utf-8'))
-                    if f is not None:
-                        fileName = f.group(0)
-                        log.info("\n\n\nFileName: {}\n alarmPic: {}".format(fileName, alarmPic))
-                #sys.stdout.buffer.write(line)
-                #sys.stdout.buffer.flush()
-                m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
-                if m is not None:
-                    msgCode = int(m.group(1))
-                    evType = int(m.group(2))
-                    if evType == 1 and msgCode != 6701 and msgCode != 5000:
-                        sys.stdout.buffer.write("\n\n[DL_FAILED] msgCode: {}, evType: {}. {}".format(
-                            msgCode, evType, taskKey).encode('utf-8'))
-                    else:
-                        if evType == 0:
-                            sys.stdout.buffer.write("\n\n[DL_START] msgCode: {}, evType: {}. {}".format(
-                            msgCode, evType, taskKey).encode('utf-8'))
+            try:
+                thisTimer.start()
+                for line in proc.stdout:
+                    # filename: videos/20190612083439_C90843689_23.mpg 
+                    if fileName is None:
+                        f = re.search(r'^filename: (.*?).mpg', line.decode('utf-8'))
+                        if f is not None:
+                            fileName = f.group(0)
+                            log.info("\n\n\nFileName: {}\n alarmPic: {}".format(fileName, alarmPic))
+                    #sys.stdout.buffer.write(line)
+                    #sys.stdout.buffer.flush()
+                    m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
+                    if m is not None:
+                        msgCode = int(m.group(1))
+                        evType = int(m.group(2))
+                        if evType == 1 and msgCode != 6701 and msgCode != 5000:
+                            sys.stdout.buffer.write("\n\n[DL_FAILED] msgCode: {}, evType: {}. {}".format(
+                                msgCode, evType, taskKey).encode('utf-8'))
                         else:
-                            sys.stdout.buffer.write("\n\n[DL_SUCCEDDED] msgCode: {}, evType: {}. {}".format(
-                            msgCode, evType, taskKey).encode('utf-8'))
-                    sys.stdout.buffer.flush()
-            proc.wait()
-            proc.stdout.close()
-            
+                            if evType == 0:
+                                sys.stdout.buffer.write("\n\n[DL_START] msgCode: {}, evType: {}. {}".format(
+                                msgCode, evType, taskKey).encode('utf-8'))
+                            else:
+                                sys.stdout.buffer.write("\n\n[DL_SUCCEDDED] msgCode: {}, evType: {}. {}".format(
+                                msgCode, evType, taskKey).encode('utf-8'))
+                        sys.stdout.buffer.flush()
+                proc.wait()
+                proc.stdout.close()
+                thisTimer.cancel()
+            except Exception as e:
+                log.error("[EXCEPTION] {},{}".format(fileName, e))
+                redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 10000))
+                hasFailedTask = True
+                continue
+  
             if (evType == 1 and msgCode != 6701 and msgCode != 5000) or (msgCode == 0 and evType == 0):
                 # failed download, register in redis
                 log.info("\n\n\ndownload failed:{},{} {}, {}, {}, {}\n\n\n".format(msgCode, evType, devSn, startTime, endTime, recType))
@@ -580,7 +589,6 @@ class VideoDownloader(object):
                         recType = "{}".format(v["video"]["recType"])
                         taskKey = self.makeVTaskKey(dev["deviceSerial"], startTime, endTime, recType)
                         redisConn.delete(taskKey)
-                pass
             # store videoAlarm data to redis
             textAlarmVides = json.dumps(alarmVideos)
             zippedAlarmVides = zlib.compress(textAlarmVides.encode('utf-8'), -1)
@@ -667,7 +675,7 @@ if __name__ == "__main__":
     env = dict()
     env["appKey"] = os.getenv("EZ_APPKEY", "a287e05ace374c3587e051db8cd4be82")
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.125") #"172.16.20.4")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.100") #"172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURRENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
@@ -677,6 +685,7 @@ if __name__ == "__main__":
     env["startOver"] = os.getenv("EZ_START_OVER", "false")
     env["forceRetry"] = os.getenv("EZ_FORCE_RETRY", "false")
     env["downloaded"] = "downloaded"
+    env['maxTimeOutMinutes'] = int(os.getenv("EZ_MAX_TIMEOUT", 30))
 
     # last day
     lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()

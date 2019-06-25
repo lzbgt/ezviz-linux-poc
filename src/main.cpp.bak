@@ -58,7 +58,7 @@ typedef struct CBUSERDATA
     ofstream *fout;
     int stat;
     // avoiding miltithreads racing writing to one file
-    mutex m;
+    recursive_mutex m;
     unsigned long long bytesWritten;
 } CBUSERDATA;
 
@@ -269,7 +269,7 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
             ofstream *fout = new ofstream();
             fout->open(filename, ios_base::binary | ios_base::trunc);
             cout << "file opened: " << filename << endl;
-            CBUSERDATA cbd = {fout, 1, mutex{}, 0};
+            CBUSERDATA cbd = {fout, 1, recursive_mutex{}, 0};
             ES_STREAM_CALLBACK scb = {msgCb, dataCb, (void *)&cbd};
             HANDLE handle = NULL;
             jRet["devsn"] = string(dev.szDevSerial);
@@ -277,7 +277,6 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
             jRet["start"] = string(rip->szStartTime);
             jRet["end"] = string(rip->szStopTime);
             jRet["rectype"] = rip->iRecType;
-            jRet["remains"] = recList->size() + 1;
             cout << "playback token: " << token << endl;
             ret = ESOpenSDK_StartPlayBack(token.c_str(), dev, *rip, scb, handle);
             if (0 != ret)
@@ -305,20 +304,18 @@ void get_records(string token, ST_ES_DEVICE_INFO &dev, safe_vector<ES_RECORD_INF
                 if(duora.count() >= 120) {
                     cout << "download speed est: " << (cbd.bytesWritten - sizeDownloaded) / (duora.count() * 1000.0) << "KB/s" << endl;
                     if(cbd.bytesWritten == sizeDownloaded) {
-                        cout <<"file size not change for 1 minute, save downloaded and start next file." << endl;
+                        cout <<"file size not change for 2 minute, save downloaded and start next file." << endl;
                         break;
                     }
                     // reset size
                     sizeDownloaded = cbd.bytesWritten;
                     // reset time start
-                    chro_start = high_resolution_clock::now();
-                    
+                    chro_start = high_resolution_clock::now();   
                 }
                 usleep(1000 * 1000 * 4);
                 if(gSignalStatus == SIGINT) {
                     break;
                 }
-                
             }
             
             ESOpenSDK_StopPlayBack(handle);
