@@ -366,8 +366,8 @@ class VideoDownloader(object):
                         if f is not None:
                             fileName = f.group(0)
                             log.info("\n\n\nFileName: {}\n alarmPic: {}".format(fileName, alarmPic))
-                    #sys.stdout.buffer.write(line)
-                    #sys.stdout.buffer.flush()
+                    sys.stdout.buffer.write(line)
+                    sys.stdout.buffer.flush()
                     m = re.search(r'code: (\d+) evt: (\d+)', line.decode('utf-8'))
                     if m is not None:
                         msgCode = int(m.group(1))
@@ -403,13 +403,14 @@ class VideoDownloader(object):
                     if msgCode == 5404:
                         redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5404))
                         # skip this device, no retry
-                        break
+                        continue
                     elif msgCode == 5402:
                         # skip this video
                         redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, 5402))
                         continue
                     elif msgCode == 5416:
                         # skip this device and add to retry later
+                        redisConn.set(taskKey, app.makeVTaskValue(self.appId,3, retries))
                         hasFailedTask = True
                         break
                     else:
@@ -675,7 +676,7 @@ if __name__ == "__main__":
     env = dict()
     env["appKey"] = os.getenv("EZ_APPKEY", "a287e05ace374c3587e051db8cd4be82")
     env["appSecret"] = os.getenv("EZ_APPSECRET", "f01b61048a1170c4d158da3752e4378d")
-    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "192.168.0.100") #"172.16.20.4")
+    env["redisAddr"] = os.getenv("EZ_REDIS_ADDR", "172.16.20.4")
     env["redisPort"] = int(os.getenv("EZ_REDIS_PORT", "6379"))
     env["numConcurrent"] = int(os.getenv("EZ_CONCURRENT", "20"))
     env["maxMinutes"] = int(os.getenv("EZ_MAX_MINUTES", "15"))
@@ -688,7 +689,7 @@ if __name__ == "__main__":
     env['maxTimeOutMinutes'] = int(os.getenv("EZ_MAX_TIMEOUT", 30))
 
     # last day
-    lastDate = (datetime.date.today() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
+    lastDate = (datetime.datetime.now() - datetime.timedelta(days=1) + datetime.timedelta(hours=8)).toordinal()
     startTime = datetime.datetime.fromordinal(lastDate) + datetime.timedelta(hours=0)
     endTime = startTime + datetime.timedelta(days=0, hours=23, minutes=59, seconds=59)
     startTime = startTime.strftime(VideoDownloader.TFSTR)
