@@ -48,6 +48,7 @@ typedef enum EZMODE {
     PLAYBACK,
     RTPLAY,
     RTSTOP,
+    RTPLAY_CTN,
     ALL
 } EZMODE;
 

@@ -162,13 +162,15 @@ class VideoDownloader(object):
         redisConn.set(self.makeAppId(), secs)
 
     def getErrorCode(self, rj):
+        log.info('{}'.format(rj))
         if rj['code'] == '20007':
             # device offline (sd)
             return 1
         elif rj['code'] == '5000':
             # server error
             return 2
-        elif rj['code'] == 49999:
+        elif rj['code'] == '49999':
+            # server data exception
             return 3
         elif rj['data'] is None:
             # no data
@@ -575,9 +577,15 @@ class VideoDownloader(object):
                 tp.map(self.getVideosMobilePar, devices[:])
 
             size = 0
+            cloudSize = 0
             for el in self.videos:
                 size = size + len(el['videos'])
-            log.info('\n\n\ntotoal videos {}, failed devices: {}\n\nvideos: {}'.format(size, self.failedDevices, self.videos))
+                for v in el['videos']:
+                    #log.info('\n\n\n\nv: {}\n\n\n'.format(v))
+                    if v['video']['recType'] == 1:
+                        cloudSize = cloudSize + 1
+            
+            log.info('\n\n\ntotoal videos {}, cloud {}, failed devices: {}\n\nvideos: {}'.format(size, cloudSize, self.failedDevices, self.videos))
             
             # filter length 0
             alarmVideos = [v for v in self.videos if len(v['videos']) > 0]

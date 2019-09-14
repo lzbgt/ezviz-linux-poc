@@ -43,6 +43,7 @@ typedef struct DEVICE_INFO_EX {
     ST_ES_DEVICE_INFO base;
     string uuid;
     uint64_t deliveryTag; // ack when downloading completed
+    EZCMD cmd;
 } DEVICE_INFO_EX;
 
 class EZVizVideoService {
@@ -358,6 +359,7 @@ private:
                         fout->open(filename, ios_base::binary | ios_base::trunc);
                         cout << "filename: " << filename << endl;
                         cbd.fout = fout;
+                        EZCMD ezCmd = dev.cmd;
 
                         cout << "params: " << this->ezvizToken << ", dev:" << dev.base.szDevSerial << ", " << dev.base.szSafeKey
                              << ", " << dev.base.iDevChannelNo << endl;
@@ -381,7 +383,9 @@ private:
                             // check to stop
                             // timeout of job
                             string routekey = this->RedisGet(this->RedisMakeRTPlayKey(devSn, dev.uuid));
+
                             if(cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP||routekey.empty()) {
+                                // stop and upload
                                 ESOpenSDK_StopPlayBack(handle);
                                 cbd.fout->flush();
                                 cbd.fout->close();
@@ -396,16 +400,25 @@ private:
                                     cout << "call uploading tool, full command line: \n" << program << endl;
                                     system(program.c_str());
                                 }
-                                this->statRTPlay.erase(devSn);
-                                string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                                this->RedisDelete(key);
-                                this->numRTPlayRunning--;
-                                this->chanRTPlay->ack(dev.deliveryTag);
-                                if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs) {
-                                    // TODO: resume is not supported in the lib
-                                    // play queue
-                                }
-                                break;
+                                
+                                // check if need continue to record
+                                if(this->statRTPlay[devSn].get<EZCMD>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN) {
+                                    // refresh key
+                                    string res = RedisPut(this->RedisMakeRTPlayKey(devSn, dev.uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
+                                    this->jobsRTPlay.push_back(dev);
+                                    continue;
+                                }else{
+                                    this->statRTPlay.erase(devSn);
+                                    string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
+                                    this->RedisDelete(key);
+                                    this->numRTPlayRunning--;
+                                    this->chanRTPlay->ack(dev.deliveryTag);
+                                    if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs) {
+                                        // TODO: resume is not supported in the lib
+                                        // play queue
+                                    }
+                                    break;
+                                }    
                             }
                             // check expiration
                             // TODO: wait on signal
@@ -569,6 +582,8 @@ private:
                 }
                 else if(cmd == "rtstop") {
                     ezCmd = EZCMD::RTSTOP;
+                }else if(cmd == "rtplay_continue") {
+                    ezCmd = EZCMD::RTPLAY_CTN;
                 }
             }
 
@@ -718,7 +733,7 @@ private:
         }
 
 
-        if(EZCMD::RTPLAY != ezCmd) {
+        if(EZCMD::RTPLAY != ezCmd||EZCMD::RTPLAY_CTN != ezCmd) {
             cerr << "\tinvalid messge " << endl;
         }
         else {
@@ -740,7 +755,7 @@ private:
                 }
 
                 cout << "\tno existing recording. create new on this instance" << endl;
-                this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag});
+                this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
                 string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                 this->statRTPlay[devSn] = EZCMD::RTPLAY;
                 this->numRTPlayRunning++;
@@ -768,7 +783,7 @@ private:
                             this->chanRTPlay->ack(deliveryTag);
                             return;
                         }
-                        this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag});
+                        this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
                         string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                         this->statRTPlay[devSn] = EZCMD::RTPLAY;
                         this->numRTPlayRunning++;
