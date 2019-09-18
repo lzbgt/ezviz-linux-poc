@@ -5,8 +5,8 @@ from time import sleep
 import sys
 
 # ./ezviz records get 1 2019-05-30\ 00:00:00 2019-05-30\ 09:00:00 C90674290 WGXWZT a287e05ace374c3587e051db8cd4be82 at.bg2xm8xf03z5ygp01y84xxmv36z54txj-4n5jmc9bua-0iw2lll-qavzt882f
-connection = pika.BlockingConnection(
-    pika.ConnectionParameters(host='127.0.0.1'))
+parameters = pika.URLParameters("amqp://ilabservice:iLabServiceOps123456@40.73.40.246:5672/")
+connection = pika.BlockingConnection(parameters)
 chanPlay = connection.channel()
 chanPlay.exchange_declare(exchange="ezviz.exchange.rtplay", exchange_type="direct")
 
