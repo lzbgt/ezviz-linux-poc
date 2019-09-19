@@ -515,7 +515,7 @@ private:
                 ret.push_back(i.as_string());
             }
         }
-        
+
         return ret;
     }
 
@@ -534,7 +534,6 @@ private:
         this->redisClient.sync_commit();
         return 0;
     }
-
 
     string RedisMakeRTPlayKey(string devSn, string uuid)
     {
