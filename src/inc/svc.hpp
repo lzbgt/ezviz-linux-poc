@@ -412,6 +412,7 @@ private:
                                     this->statRTPlay.erase(devSn);
                                     string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
                                     this->RedisDelete(key);
+                                    this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
                                     this->numRTPlayRunning--;
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                     if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs) {
@@ -518,6 +519,14 @@ private:
         }
 
         return ret;
+    }
+
+    int RedisSRem(string key, string val) {
+        vector<string> vals = {val};
+        redisClient.srem(key, vals);
+        redisClient.sync_commit();
+
+        return 0;
     }
 
     // all recording jobs that long running
