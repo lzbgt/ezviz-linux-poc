@@ -51,6 +51,7 @@ private:
     const int PRIORITY_PLAYBACK = 1;
     const int PRIORITY_RTPLAY = 10;
     const int NUM_THREAD_CLOUD = 4;
+    const string REDIS_KEY_CTN_JOBS = "rtplay_ctn_jobs";
 
     unsigned long long runCount = 0;
     condition_variable cvDetach, cvReady;
@@ -514,6 +515,20 @@ private:
             for(auto &i:arr) {
                 ret.push_back(i.as_string());
             }
+        }
+
+        return ret;
+    }
+
+    // all recording jobs that long running
+    vector<string> GetCtnJobs() {
+        vector<string> ret;
+        auto r = RedisSMembers(REDIS_KEY_CTN_JOBS);
+        for(auto &i:r) {
+           auto s = RedisGet(i);
+           if(s.empty()) {
+               ret.push_back(i);
+           }
         }
 
         return ret;
@@ -1019,6 +1034,25 @@ public:
         });
         if(worker.joinable()) {
             worker.detach();
+        }
+
+        // check failed continue jobs
+        auto v = GetCtnJobs();
+        for(auto &i:v) {
+            auto s = myutils::split(i, ':');
+            if(s.size() != 3) {
+                continue;
+            }
+            string sn = s[1];
+            string uuid = s[2];
+            json body;
+            body["cmd"] = "rtplay_continue";
+            body["chanId"] = 1;
+            body["devSn"] = sn;
+            body["devCode"] = "bcd";
+            body["uuid"] = uuid;
+            body["quality"] = 0;
+            SendAMQPMsg(this->chanRTPlay, this->envConfig.amqpConfig.rtplayExchangeName, this->envConfig.amqpConfig.rtplayRouteKey, body.dump().data());
         }
 
         // check network status and do heartbeating

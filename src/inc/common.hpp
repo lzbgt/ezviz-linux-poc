@@ -14,6 +14,7 @@
 #include <Poco/Path.h>
 #include <Poco/URI.h>
 #include <Poco/Exception.h>
+#include <sstream>
 
 using namespace std;
 
@@ -294,6 +295,19 @@ string HTTPPostRequest(string url, string body, map<string,string> headers)
         cerr << ex.displayText() << endl;
         return "";
     }
+}
+
+// split strings
+vector<string> split(const std::string& s, char delimiter)
+{
+   std::vector<std::string> tokens;
+   std::string token;
+   std::istringstream tokenStream(s);
+   while (getline(tokenStream, token, delimiter))
+   {
+      tokens.push_back(token);
+   }
+   return tokens;
 }
 
 }
