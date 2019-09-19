@@ -420,7 +420,7 @@ private:
                                         // play queue
                                     }
                                     break;
-                                }    
+                                }
                             }
                             // check expiration
                             // TODO: wait on signal
@@ -495,8 +495,9 @@ private:
         return old;
     }
 
-    int RedisSAdd(string key, vector<string> val){
-        auto f_ = redisClient.sadd(key, val);
+    int RedisSAdd(string key, string val){
+        vector<string> vals = {val};
+        auto f_ = redisClient.sadd(key, vals);
         redisClient.sync_commit();
         auto r_ = f_.get();
         if(r_.is_integer()) {
@@ -807,6 +808,9 @@ private:
                 this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
                 string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                 this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                if(ezCmd == EZCMD::RTPLAY_CTN) {
+                    RedisSAdd(this->REDIS_KEY_CTN_JOBS, res);
+                }
                 this->numRTPlayRunning++;
                 // no ack
                 return;
@@ -1045,27 +1049,31 @@ public:
             worker.detach();
         }
 
-        // check failed continue jobs
-        auto v = GetCtnJobs();
-        for(auto &i:v) {
-            auto s = myutils::split(i, ':');
-            if(s.size() != 3) {
-                continue;
-            }
-            string sn = s[1];
-            string uuid = s[2];
-            json body;
-            body["cmd"] = "rtplay_continue";
-            body["chanId"] = 1;
-            body["devSn"] = sn;
-            body["devCode"] = "bcd";
-            body["uuid"] = uuid;
-            body["quality"] = 0;
-            SendAMQPMsg(this->chanRTPlay, this->envConfig.amqpConfig.rtplayExchangeName, this->envConfig.amqpConfig.rtplayRouteKey, body.dump().data());
-        }
-
         // check network status and do heartbeating
+        int firstRun = 0;
         while(true) {
+            // check failed continue jobs
+            if(firstRun % 100 == 0) {
+                auto v = GetCtnJobs();
+                for(auto &i:v) {
+                    auto s = myutils::split(i, ':');
+                    if(s.size() != 3) {
+                        continue;
+                    }
+                    string sn = s[1];
+                    string uuid = s[2];
+                    json body;
+                    body["cmd"] = "rtplay_continue";
+                    body["chanId"] = 1;
+                    body["devSn"] = sn;
+                    body["devCode"] = "bcd";
+                    body["uuid"] = uuid;
+                    body["quality"] = 0;
+                    SendAMQPMsg(this->chanRTPlay, this->envConfig.amqpConfig.rtplayExchangeName, this->envConfig.amqpConfig.rtplayRouteKey, body.dump().data());
+                }
+            }
+
+            firstRun++;    
             unique_lock<std::mutex> lk_detach(mutDetach);
             stat = this->cvDetach.wait_for(lk_detach, 7s);
             if(cv_status::no_timeout == stat) {
