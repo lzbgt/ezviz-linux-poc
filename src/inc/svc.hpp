@@ -44,6 +44,7 @@ typedef struct DEVICE_INFO_EX {
     string uuid;
     uint64_t deliveryTag; // ack when downloading completed
     EZCMD cmd;
+    int duration;
 } DEVICE_INFO_EX;
 
 class EZVizVideoService {
@@ -404,23 +405,22 @@ private:
                                 
                                 // check if need continue to record
                                 if(this->statRTPlay[devSn].get<EZCMD>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN) {
-                                    // refresh key
-                                    string res = RedisPut(this->RedisMakeRTPlayKey(devSn, dev.uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
-                                    this->jobsRTPlay.push_back(dev);
-                                    continue;
+                                    this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
                                 }else{
-                                    this->statRTPlay.erase(devSn);
-                                    string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                                    this->RedisDelete(key);
-                                    this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
-                                    this->numRTPlayRunning--;
                                     this->chanRTPlay->ack(dev.deliveryTag);
-                                    if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs) {
-                                        // TODO: resume is not supported in the lib
-                                        // play queue
-                                    }
-                                    break;
                                 }
+
+                                this->statRTPlay.erase(devSn);
+                                string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
+                                this->RedisDelete(key);
+                                this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
+                                this->numRTPlayRunning--;
+                                
+                                if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs) {
+                                    // TODO: resume is not supported in the lib
+                                    // play queue
+                                }
+                                break;  
                             }
                             // check expiration
                             // TODO: wait on signal
@@ -479,11 +479,11 @@ private:
         return value;
     }
 
-    string RedisPut(string key, string value)
+    string RedisPut(string key, string value, int expms = 1000 * 60 * 30)
     {
         auto get_ = this->redisClient.get(key);
         auto set_ = this->redisClient.set(key, value);
-        auto exp_ = this->redisClient.pexpire(key, 1000 * 60 * 30); // 30 minutes
+        auto exp_ = this->redisClient.pexpire(key, expms); // 30 minutes
         this->redisClient.sync_commit();
         string old="";
         auto r = get_.get();
@@ -509,16 +509,22 @@ private:
 
     vector<string> RedisSMembers(string key) {
         vector<string> ret;
-        auto get_ = redisClient.smembers(key);
-        redisClient.sync_commit();
-        auto r = get_.get();
-        if(r.is_array()) {
-            auto arr = r.as_array();
-            for(auto &i:arr) {
-                ret.push_back(i.as_string());
+        try{
+            auto get_ = redisClient.smembers(key);
+            redisClient.sync_commit();
+            auto r = get_.get();
+            if(r.is_array()) {
+                auto arr = r.as_array();
+                for(auto &i:arr) {
+                    if(i.is_string()) {
+                        ret.push_back(i.as_string());
+                    }                
+                }
             }
+        }catch(exception &e) {
+            cout <<"excpetion smembers:" << e.what() <<endl;
         }
-
+        
         return ret;
     }
 
@@ -669,7 +675,7 @@ private:
             }
         }
         catch(exception e) {
-            cerr << e.what();
+            cerr << "erry in veryfiy msg: " << devJson.dump() << e.what();
         }
 
         return ezCmd;
@@ -685,14 +691,14 @@ private:
         msg[len] = 0;
         memcpy(msg, message.body(), len);
         string s = string(msg);
-        json devJson = json::parse(s);
         cout << "[======OnRTStopMessage_: " << msg << endl;
         ST_ES_DEVICE_INFO dev = {};
-        EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
+        json devJson;
         string devSn, devCode, uuid;
         int chanId = 1;
 
         try {
+            devJson = json::parse(s);
             devSn = devJson["devSn"];
             devCode = devJson["devCode"];
             uuid = devJson["uuid"];
@@ -706,6 +712,8 @@ private:
             cout << "]====== End OnRTStopMessage_\n\n";
             return;
         }
+
+        EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
 
         if(EZCMD::RTSTOP != ezCmd) {
             cerr << "\tinvalid messge " << endl;
@@ -762,16 +770,21 @@ private:
         ST_ES_DEVICE_INFO dev = {};
 
         string s = string(msg);
-        json devJson = json::parse(s);
-
-        EZCMD ezCmd = VerifyAMQPMsg(dev, devJson);
+        json devJson;
+        int duration = 10*60;
         string devSn, devCode, uuid;
         int chanId = 1;
+        EZCMD ezCmd;
+
         try {
+            devJson = json::parse(s);
             devSn = devJson["devSn"];
             devCode = devJson["devCode"];
             uuid = devJson["uuid"];
             chanId = devJson["chanId"].get<int>();
+            if(devJson.count("duration") != 0) {
+                duration = devJson["duration"].get<int>();
+            }
         }
         catch(exception e) {
             cout << e.what() << endl;
@@ -782,6 +795,7 @@ private:
             return;
         }
 
+        ezCmd = VerifyAMQPMsg(dev, devJson);
 
         if(EZCMD::RTPLAY != ezCmd && EZCMD::RTPLAY_CTN != ezCmd) {
             cerr << "\tinvalid messge " << endl;
@@ -805,11 +819,13 @@ private:
                 }
 
                 cout << "\tno existing recording. create new on this instance" << endl;
-                this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
-                string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
+
+                
+                this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
+                string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
                 this->statRTPlay[devSn] = EZCMD::RTPLAY;
                 if(ezCmd == EZCMD::RTPLAY_CTN) {
-                    RedisSAdd(this->REDIS_KEY_CTN_JOBS, res);
+                    RedisSAdd(this->REDIS_KEY_CTN_JOBS, this->RedisMakeRTPlayKey(devSn, uuid));
                 }
                 this->numRTPlayRunning++;
                 // no ack
@@ -840,11 +856,14 @@ private:
                         string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
                         this->statRTPlay[devSn] = EZCMD::RTPLAY;
                         this->numRTPlayRunning++;
-                        // no ack.
+                        // no ack
                         return;
                     }
                     else {
                         cout << "\t\t and it's still running. ignore this message" << endl;
+                        // TODO:...
+
+                        this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
                     }
                 }
             }
@@ -864,14 +883,14 @@ private:
         msg[len] = 0;
         memcpy(msg, message.body(), len);
         string s = string(msg);
-        json devJson = json::parse(s);
         cout << "[======OnRTStopMessage: " << msg << endl;
         ST_ES_DEVICE_INFO dev = {};
-        EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
+        json devJson;
         string devSn, devCode, uuid;
         int chanId = 1;
 
         try {
+            devJson = json::parse(s);
             devSn = devJson["devSn"];
             devCode = devJson["devCode"];
             uuid = devJson["uuid"];
@@ -885,6 +904,8 @@ private:
             cout << "]====== End OnRTStopMessage\n\n";
             return;
         }
+
+        EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
 
         if(ezCmd != EZCMD::RTSTOP) {
             cout << "error msg to process: " << msg << "\n\texpected a rtstop msg\n";
@@ -1053,25 +1074,29 @@ public:
         int firstRun = 0;
         while(true) {
             // check failed continue jobs
-            if(firstRun % 100 == 0) {
-                auto v = GetCtnJobs();
-                for(auto &i:v) {
-                    auto s = myutils::split(i, ':');
-                    if(s.size() != 3) {
-                        continue;
-                    }
-                    string sn = s[1];
-                    string uuid = s[2];
-                    json body;
-                    body["cmd"] = "rtplay_continue";
-                    body["chanId"] = 1;
-                    body["devSn"] = sn;
-                    body["devCode"] = "bcd";
-                    body["uuid"] = uuid;
-                    body["quality"] = 0;
-                    SendAMQPMsg(this->chanRTPlay, this->envConfig.amqpConfig.rtplayExchangeName, this->envConfig.amqpConfig.rtplayRouteKey, body.dump().data());
-                }
-            }
+            // if(firstRun % 100 == 0) {
+            //     auto v = GetCtnJobs();
+            //     for(auto &i:v) {
+            //         if(i.empty()) {
+            //             continue;
+            //         }
+            //         auto s = myutils::split(i, ':');
+            //         if(s.size() != 3) {
+            //             continue;
+            //         }
+            //         string sn = s[1];
+            //         string uuid = s[2];
+            //         json body;
+            //         body["cmd"] = "rtplay_continue";
+            //         body["chanId"] = 1;
+            //         body["devSn"] = sn;
+            //         body["devCode"] = "bcd";
+            //         body["uuid"] = uuid;
+            //         body["duration"] = 10*60;
+            //         body["quality"] = 0;
+            //         SendAMQPMsg(this->chanRTPlay, this->envConfig.amqpConfig.rtplayExchangeName, this->envConfig.amqpConfig.rtplayRouteKey, body.dump().data());
+            //     }
+            // }
 
             firstRun++;    
             unique_lock<std::mutex> lk_detach(mutDetach);
