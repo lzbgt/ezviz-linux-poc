@@ -660,13 +660,13 @@ private:
             }
 
             if(devJson.contains("chanId")) {
-                chanId = devJson["chanId"].get<int>();
-                dev.iDevChannelNo = chanId;
-            }
-            else {
-                ezCmd = EZCMD::NONE;
+                if(devJson.at("chanId").is_number_integer()) {
+                    chanId = devJson["chanId"].get<int>();
+                }
             }
 
+            dev.iDevChannelNo = chanId;
+            
             if(devJson.contains("uuid")) {
                 uuid = devJson["uuid"].get<string>();
                 if(uuid.empty()) {
@@ -702,7 +702,11 @@ private:
             devSn = devJson["devSn"];
             devCode = devJson["devCode"];
             uuid = devJson["uuid"];
-            chanId = devJson["chanId"].get<int>();
+            if(devJson.count("chanId") != 0) {
+                if(devJson.at("chanId").is_number_integer()) {
+                    chanId = devJson["chanId"].get<int>();
+                }
+            }
         }
         catch(exception e) {
             cout << e.what() << endl;
@@ -781,9 +785,16 @@ private:
             devSn = devJson["devSn"];
             devCode = devJson["devCode"];
             uuid = devJson["uuid"];
-            chanId = devJson["chanId"].get<int>();
+            if(devJson.count("chanId") != 0) {
+                if(devJson.at("chanId").is_number_integer()) {
+                    chanId = devJson["chanId"].get<int>();
+                }
+            }
+
             if(devJson.count("duration") != 0) {
-                duration = devJson["duration"].get<int>();
+                if(devJson.at("duration").is_number_integer()) {
+                    duration = devJson["duration"].get<int>();
+                }
             }
         }
         catch(exception e) {
@@ -860,10 +871,24 @@ private:
                         return;
                     }
                     else {
-                        cout << "\t\t and it's still running. ignore this message" << endl;
+                        cout << "\t\t and it's still running, ask to stop, and requeuethis message" << endl;
                         // TODO:...
+                        // avoiding continue-recording-messge loss when having signle instance crashed
+                        json msg;
+                        msg["cmd"] = "rtstop";
+                        msg["chanId"] = 1;
+                        msg["devSn"] = devSn;
+                        msg["devCode"] = devCode;
+                        msg["uuid"] = uuid;
+                        msg["quality"] = 0;
 
+                        RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 3*1000);
+                        SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
+
+                        // set ttl
+                        this_thread::sleep_for(chrono::seconds(2));
                         this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
+                        return;
                     }
                 }
             }
@@ -872,7 +897,7 @@ private:
         // no default ACK
         this->chanRTPlay->ack(deliveryTag);
         cout << "]====== End OnRTPlayMessage\n\n";
-    }
+    }   
 
 
     // internal api; auto OnRTStopMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
@@ -894,7 +919,11 @@ private:
             devSn = devJson["devSn"];
             devCode = devJson["devCode"];
             uuid = devJson["uuid"];
-            chanId = devJson["chanId"].get<int>();
+            if(devJson.count("chanId") != 0) {
+                if(devJson.at("chanId").is_number_integer()) {
+                    chanId = devJson["chanId"].get<int>();
+                }
+            }
         }
         catch(exception e) {
             cout << e.what() << endl;
