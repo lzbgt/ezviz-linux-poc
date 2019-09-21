@@ -77,26 +77,34 @@ private:
 
     string ReqEZVizToken()
     {
-        string body = "appKey="+ this->envConfig.appKey + "&appSecret=" + this->envConfig.appSecret;
-        cout << "getting ezviz token ..." << endl;
-        string token;
-        string res = myutils::HTTPPostRequest(string(OPENADDR) + "/api/lapp/token/get", body, map<string,string> {});
-        cout << "response: " << res << endl;
-        try {
-            json jres = json::parse(res);
-            token = jres["data"]["accessToken"];
+        while(true){
+            string body = "appKey="+ this->envConfig.appKey + "&appSecret=" + this->envConfig.appSecret;
+            spdlog::info("getting ezviz token ...");
+            string token;
+            string res = myutils::HTTPPostRequest(string(OPENADDR) + "/api/lapp/token/get", body, map<string,string> {});
+            spdlog::info("response: {}", res);
+            try {
+                json jres = json::parse(res);
+                if(jres.count("data") == 0 ||jres["data"].size() == 0 || jres["data"].count(accessToken) == 0) {
+                    spdlog::error("failed to request yscloud token, retry ..."); 
+                    this_thread::sleep_for(chrono::seconds(3));
+                    continue;
+                }
+                token = jres["data"]["accessToken"];
+            }
+            catch(exception e) {
+                spdlog::error("req token exception: {}", e.what());
+                exit(1);
+            }
+            spdlog::info("token: {}", token);
+            if(token.empty()) {
+                spdlog::info("failed to get token, exiting ...");
+                exit(1);
+            }
+            this->ezvizToken = token;
+            return token;
         }
-        catch(exception e) {
-            cout << "exception: " << e.what();
-            exit(1);
-        }
-        cout << "\ttoken: " << token << endl;
-        if(token.empty()) {
-            cout << "failed to get token, exiting ..." << endl;
-            exit(1);
-        }
-        this->ezvizToken = token;
-        return token;
+        
         //return "at.5f1j87n71t54g5xg0wqjsw3r0ecke16v-60s30e4ide-17ydmfr-dbymgvf2z";
     }
 
@@ -113,7 +121,7 @@ private:
     int InitAMQP()
     {
         int ret = 0;
-        cout << "mode: " << this->envConfig.mode << endl;
+        spdlog::info("mode: ",this->envConfig.mode);
         if(this->uvLoop != NULL) {
             cerr << "reconnect ..." << endl;
             delete this->uvLoop;
@@ -131,7 +139,7 @@ private:
         // playback
         if(this->envConfig.mode & EZMODE::PLAYBACK) {
             // and create a channel
-            cout << "setting up playback channel" << endl;
+            spdlog::info("setting up playback channel");
             this->chanPlayback = new AMQP::TcpChannel(this->amqpConn);
             channel = this->chanPlayback;
             // declare playback queue
@@ -210,7 +218,7 @@ private:
     {
         this->redisClient.connect(this->envConfig.redisAddr, this->envConfig.redisPort, [](const std::string& host, std::size_t port, cpp_redis::client::connect_state status) {
             if (status == cpp_redis::client::connect_state::dropped) {
-                std::cout << "client disconnected from " << host << ":" << port << std::endl;
+                spdlog::error("client disconnected from {}:{}", host, port);
             }
         }, 1000*2, -1, 1000*3);
 
@@ -218,48 +226,48 @@ private:
         auto set_ = this->redisClient.set(this->envConfig.amqpConfig.rtstopRouteKey, "1");
         auto exp_ = this->redisClient.pexpire(this->envConfig.amqpConfig.rtstopRouteKey, 1000*7); // 7s
         this->redisClient.sync_commit();
-        cout << "alive key set on redis in 7s: " << this->envConfig.amqpConfig.rtstopRouteKey << endl;
+        spdlog::info("alive key set on redis in 7s: {}", this->envConfig.amqpConfig.rtstopRouteKey);
 
         return 0;
     }
 
-    void DownloadOneFile(ST_ES_DEVICE_INFO &dev, ST_ES_RECORD_INFO &di, string appKey, string token)
-    {
-        ES_RECORD_INFO *rip = &di;
-        int ret = 0;
-        tm tm1 = {}, tm2 = {};
-        char tmStr[15] = {};
-        strptime(rip->szStartTime, "%Y-%m-%d %H:%M:%S", &tm1);
-        strptime(rip->szStopTime, "%Y-%m-%d %H:%M:%S", &tm2);
-        time_t t1 = mktime(&tm1), t2 = mktime(&tm2);
-        int secs = difftime(t2, t1);
-        cout << "secs: " << secs << endl;
-        strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", &tm1);
-        string filename = tmStr;
-        filename = this->envConfig.videoDir + "/" + filename;
-        filename += string("_") + string(dev.szDevSerial) + "_" + to_string(secs) + ".mpg";
-        cout << "filename: " << filename << endl;
-        ofstream *fout = new ofstream();
-        fout->open(filename, ios_base::binary | ios_base::trunc);
-        cout << "file opened: " << filename << endl;
-        EZCallBackUserData cbd;
-        cbd.fout = fout;
-        cbd.stat = 1;
-        cbd.bytesWritten = 0;
-        cbd.numRetried = 0;
-        ES_STREAM_CALLBACK scb = {NULL, NULL, (void *)&cbd};
-        HANDLE handle = NULL;
-        ret = ESOpenSDK_StartPlayBack(token.c_str(), dev, *rip, scb, handle);
-        if (0 != ret) {
-            delete cbd.fout;
-            return;
-        }
+    // void DownloadOneFile(ST_ES_DEVICE_INFO &dev, ST_ES_RECORD_INFO &di, string appKey, string token)
+    // {
+    //     ES_RECORD_INFO *rip = &di;
+    //     int ret = 0;
+    //     tm tm1 = {}, tm2 = {};
+    //     char tmStr[15] = {};
+    //     strptime(rip->szStartTime, "%Y-%m-%d %H:%M:%S", &tm1);
+    //     strptime(rip->szStopTime, "%Y-%m-%d %H:%M:%S", &tm2);
+    //     time_t t1 = mktime(&tm1), t2 = mktime(&tm2);
+    //     int secs = difftime(t2, t1);
+    //     spdlog::info("secs: " << secs << endl;
+    //     strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", &tm1);
+    //     string filename = tmStr;
+    //     filename = this->envConfig.videoDir + "/" + filename;
+    //     filename += string("_") + string(dev.szDevSerial) + "_" + to_string(secs) + ".mpg";
+    //     cout << "filename: " << filename << endl;
+    //     ofstream *fout = new ofstream();
+    //     fout->open(filename, ios_base::binary | ios_base::trunc);
+    //     cout << "file opened: " << filename << endl;
+    //     EZCallBackUserData cbd;
+    //     cbd.fout = fout;
+    //     cbd.stat = 1;
+    //     cbd.bytesWritten = 0;
+    //     cbd.numRetried = 0;
+    //     ES_STREAM_CALLBACK scb = {NULL, NULL, (void *)&cbd};
+    //     HANDLE handle = NULL;
+    //     ret = ESOpenSDK_StartPlayBack(token.c_str(), dev, *rip, scb, handle);
+    //     if (0 != ret) {
+    //         delete cbd.fout;
+    //         return;
+    //     }
 
-        ESOpenSDK_StopPlayBack(handle);
-        cbd.fout->flush();
-        cbd.fout->close();
-        delete cbd.fout;
-    }
+    //     ESOpenSDK_StopPlayBack(handle);
+    //     cbd.fout->flush();
+    //     cbd.fout->close();
+    //     delete cbd.fout;
+    // }
 
     void BootStrapDownloader(thread *threads, int num)
     {
@@ -294,7 +302,6 @@ private:
     void BootStrapRTPlay(thread *threads, int num)
     {
         auto ezvizMsgCb = [](HANDLE pHandle, int code, int eventType, void *pUser) ->int{
-            cout << "=====> msg h: " << pHandle << " code: " << code << " evt: " << eventType << " pd: " << pUser << endl;
             EZCallBackUserData *cbd = (EZCallBackUserData *)pUser;
 
             if (code == ES_STREAM_CLIENT_RET_OVER || eventType != ES_STREAM_EVENT::ES_NET_EVENT_CONNECTED)
@@ -302,6 +309,7 @@ private:
                 if (cbd != NULL) {
                     cbd->stat = 0;
                 }
+                spdlog::warn("msg h: {} code: {}, evt: {}, pd: {}", pHandle, code, eventType, pUser);
             }
             return 0;
         };
@@ -312,7 +320,7 @@ private:
             while(cnt %1000 == 0)
             {
                 cnt++;
-                cout << "=====> data h: " << pHandle << " datatype: " << dataType << " pd: " << pUser << endl;
+                spdlog::info("msg h: {} datatype: {}, len: {}, pd: {}", pHandle, dataType, buflen, pUser);
             }
 
             if (cbd!= NULL && (ES_STREAM_TYPE::ES_STREAM_DATA == dataType))
@@ -327,6 +335,7 @@ private:
                 if (cbd != NULL) {
                     cbd->stat = 0;
                 }
+                spdlog::warn("stream end from yscloud");
             }
 
             cbd->bytesWritten += buflen;
@@ -359,12 +368,10 @@ private:
                         filename += string(tmStr) + "_" + string(dev.base.szDevSerial) + ".mp4";
                         ofstream *fout = new ofstream();
                         fout->open(filename, ios_base::binary | ios_base::trunc);
-                        cout << "filename: " << filename << endl;
                         cbd.fout = fout;
                         EZCMD ezCmd = dev.cmd;
 
-                        cout << "params: " << this->ezvizToken << ", dev:" << dev.base.szDevSerial << ", " << dev.base.szSafeKey
-                             << ", " << dev.base.iDevChannelNo << endl;
+                        spdlog::info("record params filename: {}, token: {}, sn: {}, code: {}, chanId: {}", filename, this->ezvizToken, dev.base.szDevSerial, dev.base.szSafeKey, dev.base.iDevChannelNo);
 
                         HANDLE handle = NULL;
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev.base, scb, handle);
@@ -381,12 +388,13 @@ private:
                         // wait for stop cmd or timeout
                         auto chro_start = high_resolution_clock::now();
                         unsigned long long sizeDownloaded = cbd.bytesWritten;
+                        bool bNoData = false;
                         while(true) {
                             // check to stop
                             // timeout of job
                             string routekey = this->RedisGet(this->RedisMakeRTPlayKey(devSn, dev.uuid));
 
-                            if(cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP||routekey.empty()) {
+                            if(bNoData || cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP||routekey.empty()) {
                                 // stop and upload
                                 ESOpenSDK_StopPlayBack(handle);
                                 cbd.fout->flush();
@@ -395,11 +403,11 @@ private:
                                 delete cbd.fout;
                                 // upload
                                 if(this->envConfig.uploadProgPath.empty() || this->envConfig.apiSrvAddr.empty()) {
-                                    //
+                                    spdlog::warn("no external upload program configured for uploading");
                                 }
                                 else {
                                     string program = string("nohup ") + this->envConfig.uploadProgPath + string(" -s ") + this->envConfig.apiSrvAddr +  string(" -i ") + filename + string(" &");
-                                    cout << "call uploading tool, full command line: \n" << program << endl;
+                                    spdlog::info("upload video full command line: {}", program);
                                     system(program.c_str());
                                 }
                                 
@@ -424,10 +432,15 @@ private:
                             }
                             // check expiration
                             // TODO: wait on signal
-                            this_thread::sleep_for(3s);
+                            this_thread::sleep_for(7s); // it has job, so can sleep for a long time.
+                            if(cbd.bytesWritten == sizeDownloaded) {
+                                bNoData = true;
+                                spdlog::error("no data. please check server/camera network connections! will stop and retry");
+                                continue;
+                            }
                             auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start);
                             if(duora.count() >= 60) {
-                                cout << "streaming speed EST: " << (cbd.bytesWritten - sizeDownloaded) / (duora.count() * 1024.0 + 1) << "KB/s" << endl;
+                                spdlog::info("{} speed EST: {} KB/s", filename, (cbd.bytesWritten - sizeDownloaded) / (duora.count() * 1024.0 + 1));
                                 // reset size
                                 sizeDownloaded = cbd.bytesWritten;
                                 // reset time start
@@ -447,24 +460,18 @@ private:
     void SendAMQPMsg(AMQP::TcpChannel *chan, string &exchange, string &routekey, const char *msg)
     {
         chan->startTransaction().onError([](const char* msg) {
-            cout << "startTransaction MQ message error: " << msg << endl;
+            spdlog::error("startTransaction MQ message error: {}",msg);
         });
         chan->publish(exchange, routekey, msg);
         chan->commitTransaction().onSuccess([] {
-            cout << "commit MQ message success" << endl;
+            spdlog::debug("commit MQ message success");
         }).onError([](const char* msg) {
-            cout <<"commit  MQ message error: " << msg <<endl;
+            spdlog::error("commit  MQ message error: {}",msg);
         });
     }
 
     string RedisGet(string key, bool bPrint = false)
     {
-        // // moc
-        // string sn =  key.substr(0,9);
-        // cout << "sn: " << sn << endl;
-        // if(this->statRTPlay.contains(sn)) {
-        //     return this->envConfig.amqpConfig.rtstopRouteKey;
-        // }
         auto get = this->redisClient.get(key);
         this->redisClient.sync_commit();
         string value = "";
@@ -473,7 +480,7 @@ private:
             value = r.as_string();
         }
         if(bPrint) {
-            cout << "redis get : " << key << "->" << value <<endl;
+            spdlog::info("redis get: {} -> {}", key, value);
         }
 
         return value;
@@ -491,7 +498,7 @@ private:
             old = r.as_string();
         }
 
-        cout << "redis set : " << key  << " changed[" << old <<"->" << value<< "]" << endl;
+        spdlog::info("redis set: {} -> {}. old v: {} ", key , value, old);
         return old;
     }
 
@@ -522,7 +529,7 @@ private:
                 }
             }
         }catch(exception &e) {
-            cout <<"excpetion smembers:" << e.what() <<endl;
+            spdlog::error("excpetion smembers: {}", e.what());
         }
         
         return ret;
@@ -553,7 +560,6 @@ private:
     void RedisDelete(string key)
     {
         // TODO: implement soft deletion?
-        cout << "redis del: " << key << endl;
         auto del_ = this->redisClient.del(vector<string>({{key}}));
         this->redisClient.sync_commit();
         del_.get();
@@ -583,7 +589,7 @@ private:
             this->ReqEZVizToken();
             if (!fs::exists(this->envConfig.videoDir)) {
                 if (!fs::create_directory(this->envConfig.videoDir)) {
-                    cout << "can't create directory: " << this->envConfig.videoDir << endl;
+                    spdlog::error("can't create directory: {}", this->envConfig.videoDir);
                     exit(1);
                 }
                 fs::permissions(this->envConfig.videoDir, fs::perms::all);
@@ -691,7 +697,7 @@ private:
         msg[len] = 0;
         memcpy(msg, message.body(), len);
         string s = string(msg);
-        cout << "[======OnRTStopMessage_: " << msg << endl;
+        spdlog::info("[======OnRTStopMessage_: {}", msg);
         ST_ES_DEVICE_INFO dev = {};
         json devJson;
         string devSn, devCode, uuid;
@@ -705,50 +711,50 @@ private:
             if(devJson.count("chanId") != 0) {
                 if(devJson.at("chanId").is_number_integer()) {
                     chanId = devJson["chanId"].get<int>();
+                }else{
+                    spdlog::warn("invalid chanId, using default 1");
                 }
             }
         }
         catch(exception e) {
-            cout << e.what() << endl;
-            cout << "exception in request, ignore message" << endl;
-            // default ACK
             this->chanRTStop_->ack(deliveryTag);
-            cout << "]====== End OnRTStopMessage_\n\n";
+            spdlog::error("exception parse json in Method_OnRTStopMessage_: {}\n]====== End OnRTStopMessage_",  e.what());
+            // default ACK
             return;
         }
 
         EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
 
         if(EZCMD::RTSTOP != ezCmd) {
-            cerr << "\tinvalid messge " << endl;
+            spdlog::warn("Method_OnRTStopMessage_ invalid messge: {} ", msg);
         }
         else {
-            cout << "check if this dev is in recording..." << endl;
+             spdlog::info("check if this dev is in recording...");
             // query redis
             string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
             // check redis for existing job
             if(routekey.empty()) {
                 // no instance
-                cout << "\tno existing recording. ignore this message" << endl;
+                spdlog::info("Method_OnRTStopMessage_ no existing recording. ignore this message");
             }
             else {
                 // existed on this instance
                 if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
-                    cout << "\trecording on this instance, try to stop " << routekey << endl;
+                    spdlog::info("\trecording on this instance {}, try to stop ", routekey);
                     if(this->statRTPlay.contains(devSn)) {
                         this->statRTPlay[devSn] = EZCMD::RTSTOP;
                     }
                     else {
-                        cout << "\t\tbut can't find any running job on this instance, ignored" << endl;
+                        spdlog::info("\t\tbut can't find any running job on this instance, ignored");
                     }
                 }
                 else {
                     if(this->RedisGet(routekey).empty()) {
-                        cout << "\tthe recording instance is dead, drop the message and delete the job" << routekey << endl;
+                        spdlog::info("\tthe recording instance {} is dead, drop the message and delete the job", routekey);
                         RedisDelete(RedisMakeRTPlayKey(devSn, uuid));
                     }
                     else {
-                        cout << "\trerouting rtstop message to the recording instance: " << routekey << endl;
+                        spdlog::info("\trerouting rtstop message to the recording instance {}", routekey);
                         SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);
                     }
                 }
@@ -756,7 +762,7 @@ private:
         }
         // default ACK
         this->chanRTStop_->ack(deliveryTag);
-        cout << "]======OnRTStopMessage_ " << endl;
+        spdlog::info("]======OnRTStopMessage_ ");
     }
 
 
@@ -768,7 +774,7 @@ private:
         msg[len] = 0;
         memcpy(msg, message.body(), len);
         // acknowledge the message
-        cout << "[====== OnRTPlayMessage: " << msg << endl;
+        spdlog::info("[====== OnRTPlayMessage: {}", msg);
 
         // parse
         ST_ES_DEVICE_INFO dev = {};
@@ -798,38 +804,36 @@ private:
             }
         }
         catch(exception e) {
-            cout << e.what() << endl;
-            cout << "exception in request, ignore message" << endl;
             // default ACK
             this->chanRTPlay->ack(deliveryTag);
-            cout << "]====== End OnRTPlayMessage\n\n";
+            spdlog::error("exception in parse message json, ignore message: {}\n]====== End OnRTPlayMessage", e.what());
             return;
         }
 
         ezCmd = VerifyAMQPMsg(dev, devJson);
 
         if(EZCMD::RTPLAY != ezCmd && EZCMD::RTPLAY_CTN != ezCmd) {
-            cerr << "\tinvalid messge " << endl;
+            spdlog::error("OnRTPlayMessage invalid messge");
         }
         else {
-            cout << "check if this dev is in recording..." << endl;
+            spdlog::info("check if this dev is in recording...");
             // query redis
             string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
             // check redis for existing job
             if(routekey.empty()) {
                 // new capture
                 // message flow control
-                cout << "running jobs on this instance: " << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
+                spdlog::info("running jobs on this instance: {}, allowed max: ", this->numRTPlayRunning ,this->envConfig.numConcurrentDevs);
                 if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
                     //TODO: stop consume, pause is not IMPLEMENTED in the library, use cancel instead
                     // this->chanRTPlay->pause();
-                    cout << "\tflow control, reject & cancel consumming" << endl;
+                    spdlog::warn("\tflow control, reject & cancel consumming");
                     this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
                     // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
                     return;
                 }
 
-                cout << "\tno existing recording. create new on this instance" << endl;
+                spdlog::info("\tno existing recording. create new on this instance");
 
                 
                 this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
@@ -845,19 +849,19 @@ private:
             else {
                 // existed
                 if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
-                    cout << "\talready recording on this instance, ingnore the message: " << routekey << endl;
+                    spdlog::warn("\talready recording on this instance {}, ingnore the message", routekey);
                 }
                 else {
                     // check alive
-                    cout << "\talready recording on another instance: " << routekey << endl;
+                    spdlog::info("\talready recording on another instance: {}", routekey);
                     if(this->RedisGet(routekey) == "") {
-                        cout << "\t\tbut it was a dead job before, try createing new on this instance" << endl;
-                        cout << "running jobs on this instance: " << this->numRTPlayRunning <<"; allowed max: " << this->envConfig.numConcurrentDevs <<endl;
+                        spdlog::info("\t\tbut it was a dead job before, try createing new on this instance");
+                        spdlog::info("running jobs on this instance: {}, allowed max: {}", this->numRTPlayRunning , this->envConfig.numConcurrentDevs);
                         // message flow control
                         if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
                             //TODO: stop consume, pause is not IMPLEMENTED in the library, use reject instead
                             // this->chanRTPlay->pause();
-                            cout << "\tflow control, reject & cancel consumming" << endl;
+                            spdlog::info("\tflow control, reject & cancel consumming");
                             // this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
                             // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
                             this->chanRTPlay->ack(deliveryTag);
@@ -871,7 +875,7 @@ private:
                         return;
                     }
                     else {
-                        cout << "\t\t and it's still running, ask to stop, and requeuethis message" << endl;
+                        spdlog::info("\t\t and it's still running, ask to stop, and requeuethis message");
                         // TODO:...
                         // avoiding continue-recording-messge loss when having signle instance crashed
                         json msg;
@@ -896,7 +900,7 @@ private:
 
         // no default ACK
         this->chanRTPlay->ack(deliveryTag);
-        cout << "]====== End OnRTPlayMessage\n\n";
+        spdlog::info("]====== End OnRTPlayMessage");
     }   
 
 
@@ -908,7 +912,7 @@ private:
         msg[len] = 0;
         memcpy(msg, message.body(), len);
         string s = string(msg);
-        cout << "[======OnRTStopMessage: " << msg << endl;
+        spdlog::info("[======OnRTStopMessage: {}", msg);
         ST_ES_DEVICE_INFO dev = {};
         json devJson;
         string devSn, devCode, uuid;
@@ -926,30 +930,28 @@ private:
             }
         }
         catch(exception e) {
-            cout << e.what() << endl;
-            cout << "exception in request, ignore message" << endl;
             // default ACK
+            spdlog::error("exception parsing message json: {}\n]====== End OnRTStopMessage", e.what());
             this->chanRTStop->ack(deliveryTag);
-            cout << "]====== End OnRTStopMessage\n\n";
             return;
         }
 
         EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
 
         if(ezCmd != EZCMD::RTSTOP) {
-            cout << "error msg to process: " << msg << "\n\texpected a rtstop msg\n";
+            spdlog::error("Method_OnRTStopMessage invalid msg to process: {}" ,msg);
         }
         else {
             if(this->statRTPlay.contains(devSn)) {
                 this->statRTPlay[devSn] = EZCMD::RTSTOP;
             }
             else {
-                cout << "error rtstop, no running recording on this instance." << endl;
+                spdlog::error("Method_OnRTStopMessage error rtstop, no running recording on this instance: {}", devSn);
             }
         }
 
         // acknowledge the message
-        cout << "]======OnRTStopMessage: " << endl;
+        spdlog::info("]======OnRTStopMessage");
 
         this->chanRTStop->ack(deliveryTag);
     }
@@ -978,7 +980,7 @@ public:
     void Run()
     {
         // reconnect on network issue
-        cout <<"runCount: " << this->runCount << endl;
+        spdlog::info("network reset count: {}",this->runCount);
         if(runCount > 0) {
             this->_init(7);
             runCount++;
@@ -1002,7 +1004,7 @@ public:
 
         // callback function that is called when the consume operation failed
         auto OnChanOperationFailed = [](string message) {
-            cout << "consume operation failed: " << message << std::endl;
+            spdlog::error("consume operation failed: {}" , message );
         };
 
         // callback operation when a message was received
@@ -1012,7 +1014,7 @@ public:
             msg[len] = 0;
             memcpy(msg, message.body(), len);
             // acknowledge the message
-            cout << "OnPlaybckMessage: " << msg << endl;
+            spdlog::info("OnPlaybckMessage: {}", msg);
             this->chanPlayback->ack(deliveryTag);
 
             // TOOD:

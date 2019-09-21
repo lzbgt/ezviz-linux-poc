@@ -4,6 +4,7 @@
 #include <uv.h>
 #include <condition_variable>
 #include <amqpcpp.h>
+#include <spdlog/spdlog.h>
 #include <amqpcpp/libuv.h>
 #include "../json.hpp"
 
@@ -21,7 +22,7 @@ private:
      */
     virtual void onError(AMQP::TcpConnection *connection, const char *message) override
     {
-        std::cout << "onError error: " << message << std::endl;
+        spdlog::error("AMQP onError error: {}", message);
     }
 
     /**
@@ -30,7 +31,7 @@ private:
      */
     virtual void onConnected(AMQP::TcpConnection *connection) override 
     {
-        std::cout << "connected" << std::endl;
+        spdlog::info("AMQP connected");
     }
 
     virtual uint16_t onNegotiate(AMQP::TcpConnection *connection, uint16_t interval)
@@ -48,7 +49,7 @@ private:
 
     virtual void onAttached(AMQP::TcpConnection *connection)
     {
-        cout << "onAttached" << endl;
+        spdlog::info("AMQPonAttached");
 
     }
 
@@ -60,18 +61,18 @@ private:
     virtual void onProperties(AMQP::TcpConnection *connection, const AMQP::Table &server, AMQP::Table &client)
     {
         AMQP::LibUvHandler::onProperties(connection, server, client);
-        cout << "onProperties" << endl;
+        spdlog::info("AMQP onProperties");
     }
 
     virtual void onReady(AMQP::TcpConnection *connection) 
     {
-        cout << "onReady" << endl;
+        spdlog::info("AMQPonReady");
         cvReady->notify_all();
     }
 
     virtual void onClosed(AMQP::TcpConnection *connection) 
     {
-        cout << "onClosed" << endl;
+        spdlog::info("AMQPonClosed");
     }
     
     /**
@@ -81,7 +82,7 @@ private:
      */
     virtual void onLost(AMQP::TcpConnection *connection) 
     {
-        cout << "onLost" << endl;
+        spdlog::error("AMQP onLost");
     }
 
     /**
@@ -92,7 +93,7 @@ private:
      */
     virtual void onDetached(AMQP::TcpConnection *connection)
     {
-        cout << "onDetached" << endl;
+        spdlog::error("AMQP onDetached");
         cvDetach->notify_all();
     }
     

@@ -1,5 +1,6 @@
 #include <cpp_redis/cpp_redis>
 #include <iostream>
+#include <spdlog/spdlog.h>
 
 using namespace std;
 
@@ -9,7 +10,7 @@ int InitRedis()
 {
     redisClient.connect("192.168.1.102", 6379, [](const std::string& host, std::size_t port, cpp_redis::client::connect_state status) {
         if (status == cpp_redis::client::connect_state::dropped) {
-            std::cout << "client disconnected from " << host << ":" << port << std::endl;
+            spdlog::error("redis client disconnected from: {}:{} ", host , port);
         }
     }, 1000*2, -1, 1000*3);
 

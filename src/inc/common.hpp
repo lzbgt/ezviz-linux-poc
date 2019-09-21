@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include "uuid.hpp"
+#include "spdlog/spdlog.h"
 #include <Poco/Net/HTTPSClientSession.h>
 #include <Poco/Net/HTTPClientSession.h>
 #include <Poco/Net/HTTPRequest.h>
@@ -114,8 +115,7 @@ public:
                 this->mode = EZMODE::PLAYBACK;
             }
             else {
-                cout << "invalid mode: " << this->mode << endl;
-                cout << "choices are: rtplay, playback" << endl;
+                spdlog::error("ezviz invalid mode: {}. choices are: rtplay, playback", this->mode);
                 exit(1);
             }
         }
@@ -283,7 +283,7 @@ string HTTPPostRequest(string url, string body, map<string,string> headers)
 
         // get response
         HTTPResponse res;
-        cout << res.getStatus() << " " << res.getReason() << endl;
+        spdlog::info("http request: {} {}", res.getStatus(), res.getReason());
 
         istream &is = session.receiveResponse(res);
         stringstream ss;
