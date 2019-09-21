@@ -85,7 +85,7 @@ private:
             spdlog::info("response: {}", res);
             try {
                 json jres = json::parse(res);
-                if(jres.count("data") == 0 ||jres["data"].size() == 0 || jres["data"].count(accessToken) == 0) {
+                if(jres.count("data") == 0 ||jres["data"].size() == 0 || jres["data"].count("accessToken") == 0) {
                     spdlog::error("failed to request yscloud token, retry ..."); 
                     this_thread::sleep_for(chrono::seconds(3));
                     continue;
@@ -121,7 +121,7 @@ private:
     int InitAMQP()
     {
         int ret = 0;
-        spdlog::info("mode: ",this->envConfig.mode);
+        spdlog::info("mode: {}",this->envConfig.mode);
         if(this->uvLoop != NULL) {
             cerr << "reconnect ..." << endl;
             delete this->uvLoop;
@@ -406,9 +406,14 @@ private:
                                     spdlog::warn("no external upload program configured for uploading");
                                 }
                                 else {
-                                    string program = string("nohup ") + this->envConfig.uploadProgPath + string(" -s ") + this->envConfig.apiSrvAddr +  string(" -i ") + filename + string(" &");
-                                    spdlog::info("upload video full command line: {}", program);
-                                    system(program.c_str());
+                                    if( cbd.bytesWritten == 0) {
+                                        spdlog::error("video file empty ignored. please check network connections");
+                                        system((string("rm -f ") + filename).c_str());
+                                    }else{
+                                        string program = string("nohup ") + this->envConfig.uploadProgPath + string(" -s ") + this->envConfig.apiSrvAddr +  string(" -i ") + filename + string(" &");
+                                        spdlog::info("upload video full command line: {}", program);
+                                        system(program.c_str());
+                                    }
                                 }
                                 
                                 // check if need continue to record
@@ -802,100 +807,101 @@ private:
                     duration = devJson["duration"].get<int>();
                 }
             }
+ 
+            ezCmd = VerifyAMQPMsg(dev, devJson);
+
+            if(EZCMD::RTPLAY != ezCmd && EZCMD::RTPLAY_CTN != ezCmd) {
+                spdlog::error("OnRTPlayMessage invalid messge");
+            }
+            else {
+                spdlog::info("check if this dev is in recording...");
+                // query redis
+                string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
+                // check redis for existing job
+                if(routekey.empty()) {
+                    // new capture
+                    // message flow control
+                    spdlog::info("running jobs on this instance: {}, allowed max: ", this->numRTPlayRunning ,this->envConfig.numConcurrentDevs);
+                    if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
+                        //TODO: stop consume, pause is not IMPLEMENTED in the library, use cancel instead
+                        // this->chanRTPlay->pause();
+                        spdlog::warn("\tflow control, reject & cancel consumming");
+                        this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
+                        // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
+                        return;
+                    }
+
+                    spdlog::info("\tno existing recording. create new on this instance");
+
+                    
+                    this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
+                    string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
+                    this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                    if(ezCmd == EZCMD::RTPLAY_CTN) {
+                        RedisSAdd(this->REDIS_KEY_CTN_JOBS, this->RedisMakeRTPlayKey(devSn, uuid));
+                    }
+                    this->numRTPlayRunning++;
+                    // no ack
+                    return;
+                }
+                else {
+                    // existed
+                    if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
+                        spdlog::warn("\talready recording on this instance {}, ingnore the message", routekey);
+                    }
+                    else {
+                        // check alive
+                        spdlog::info("\talready recording on another instance: {}", routekey);
+                        if(this->RedisGet(routekey) == "") {
+                            spdlog::info("\t\tbut it was a dead job before, try createing new on this instance");
+                            spdlog::info("running jobs on this instance: {}, allowed max: {}", this->numRTPlayRunning , this->envConfig.numConcurrentDevs);
+                            // message flow control
+                            if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
+                                //TODO: stop consume, pause is not IMPLEMENTED in the library, use reject instead
+                                // this->chanRTPlay->pause();
+                                spdlog::info("\tflow control, reject & cancel consumming");
+                                // this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
+                                // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
+                                this->chanRTPlay->ack(deliveryTag);
+                                return;
+                            }
+                            this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
+                            string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
+                            this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                            this->numRTPlayRunning++;
+                            // no ack
+                            return;
+                        }
+                        else {
+                            spdlog::info("\t\t and it's still running, ask to stop, and requeuethis message");
+                            // TODO:...
+                            // avoiding continue-recording-messge loss when having signle instance crashed
+                            json msg;
+                            msg["cmd"] = "rtstop";
+                            msg["chanId"] = 1;
+                            msg["devSn"] = devSn;
+                            msg["devCode"] = devCode;
+                            msg["uuid"] = uuid;
+                            msg["quality"] = 0;
+
+                            RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 3*1000);
+                            SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
+
+                            // set ttl
+                            this_thread::sleep_for(chrono::seconds(2));
+                            this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
+                            return;
+                        }
+                    }
+                }
+            }
+
         }
         catch(exception e) {
             // default ACK
             this->chanRTPlay->ack(deliveryTag);
             spdlog::error("exception in parse message json, ignore message: {}\n]====== End OnRTPlayMessage", e.what());
             return;
-        }
-
-        ezCmd = VerifyAMQPMsg(dev, devJson);
-
-        if(EZCMD::RTPLAY != ezCmd && EZCMD::RTPLAY_CTN != ezCmd) {
-            spdlog::error("OnRTPlayMessage invalid messge");
-        }
-        else {
-            spdlog::info("check if this dev is in recording...");
-            // query redis
-            string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
-            // check redis for existing job
-            if(routekey.empty()) {
-                // new capture
-                // message flow control
-                spdlog::info("running jobs on this instance: {}, allowed max: ", this->numRTPlayRunning ,this->envConfig.numConcurrentDevs);
-                if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
-                    //TODO: stop consume, pause is not IMPLEMENTED in the library, use cancel instead
-                    // this->chanRTPlay->pause();
-                    spdlog::warn("\tflow control, reject & cancel consumming");
-                    this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
-                    // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
-                    return;
-                }
-
-                spdlog::info("\tno existing recording. create new on this instance");
-
-                
-                this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
-                string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
-                this->statRTPlay[devSn] = EZCMD::RTPLAY;
-                if(ezCmd == EZCMD::RTPLAY_CTN) {
-                    RedisSAdd(this->REDIS_KEY_CTN_JOBS, this->RedisMakeRTPlayKey(devSn, uuid));
-                }
-                this->numRTPlayRunning++;
-                // no ack
-                return;
-            }
-            else {
-                // existed
-                if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
-                    spdlog::warn("\talready recording on this instance {}, ingnore the message", routekey);
-                }
-                else {
-                    // check alive
-                    spdlog::info("\talready recording on another instance: {}", routekey);
-                    if(this->RedisGet(routekey) == "") {
-                        spdlog::info("\t\tbut it was a dead job before, try createing new on this instance");
-                        spdlog::info("running jobs on this instance: {}, allowed max: {}", this->numRTPlayRunning , this->envConfig.numConcurrentDevs);
-                        // message flow control
-                        if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
-                            //TODO: stop consume, pause is not IMPLEMENTED in the library, use reject instead
-                            // this->chanRTPlay->pause();
-                            spdlog::info("\tflow control, reject & cancel consumming");
-                            // this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
-                            // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
-                            this->chanRTPlay->ack(deliveryTag);
-                            return;
-                        }
-                        this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
-                        string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
-                        this->statRTPlay[devSn] = EZCMD::RTPLAY;
-                        this->numRTPlayRunning++;
-                        // no ack
-                        return;
-                    }
-                    else {
-                        spdlog::info("\t\t and it's still running, ask to stop, and requeuethis message");
-                        // TODO:...
-                        // avoiding continue-recording-messge loss when having signle instance crashed
-                        json msg;
-                        msg["cmd"] = "rtstop";
-                        msg["chanId"] = 1;
-                        msg["devSn"] = devSn;
-                        msg["devCode"] = devCode;
-                        msg["uuid"] = uuid;
-                        msg["quality"] = 0;
-
-                        RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 3*1000);
-                        SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
-
-                        // set ttl
-                        this_thread::sleep_for(chrono::seconds(2));
-                        this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
-                        return;
-                    }
-                }
-            }
         }
 
         // no default ACK
