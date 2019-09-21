@@ -379,7 +379,11 @@ private:
                         if(ret != 0) {
                             cbd.fout->close();
                             delete cbd.fout;
-                            this->statRTPlay[devSn]= (int)EZCMD::NONE;
+                            {
+                                auto lg = lock_guard(this->mutStatRTPlay);
+                                this->statRTPlay[devSn]= (int)EZCMD::NONE;
+                            }
+                            
                             string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
                             RedisDelete(key);
                             this->numRTPlayRunning--;
@@ -747,12 +751,16 @@ private:
                 // existed on this instance
                 if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
                     spdlog::info("\trecording on this instance {}, try to stop ", routekey);
-                    if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
-                        this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
+                    {
+                        auto lg = lock_guard(this->mutStatRTPlay);
+                        if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
+                            this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
+                        }
+                        else {
+                            spdlog::info("\t\tbut can't find any running job on this instance, ignored");
+                        }  
                     }
-                    else {
-                        spdlog::info("\t\tbut can't find any running job on this instance, ignored");
-                    }
+                    
                 }
                 else {
                     if(this->RedisGet(routekey).empty()) {
@@ -841,7 +849,11 @@ private:
                     
                     this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
                     string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
-                    this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
+                    {
+                        auto lg = lock_guard(this->mutStatRTPlay);
+                        this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
+                    }
+                    
                     if(ezCmd == EZCMD::RTPLAY_CTN) {
                         RedisSAdd(this->REDIS_KEY_CTN_JOBS, this->RedisMakeRTPlayKey(devSn, uuid));
                     }
@@ -872,7 +884,11 @@ private:
                             }
                             this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
                             string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
-                            this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
+                            {
+                                auto lg = lock_guard(this->mutStatRTPlay);
+                                this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
+                            }
+                            
                             this->numRTPlayRunning++;
                             // no ack
                             return;
@@ -953,6 +969,7 @@ private:
             spdlog::error("Method_OnRTStopMessage invalid msg to process: {}" ,msg);
         }
         else {
+            auto lg = lock_guard(this->mutStatRTPlay);
             if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
                 this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
             }
