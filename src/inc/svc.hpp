@@ -394,7 +394,7 @@ private:
                             // timeout of job
                             string routekey = this->RedisGet(this->RedisMakeRTPlayKey(devSn, dev.uuid));
 
-                            if(bNoData || cbd.stat == 0 || this->statRTPlay[devSn].get<EZCMD>() == EZCMD::RTSTOP||routekey.empty()) {
+                            if(bNoData || cbd.stat == 0 || this->statRTPlay[devSn].get<int>() == EZCMD::RTSTOP||routekey.empty()) {
                                 // stop and upload
                                 ESOpenSDK_StopPlayBack(handle);
                                 cbd.fout->flush();
@@ -417,7 +417,7 @@ private:
                                 }
                                 
                                 // check if need continue to record
-                                if(this->statRTPlay[devSn].get<EZCMD>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN) {
+                                if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
                                 }else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
@@ -437,7 +437,7 @@ private:
                             }
                             // check expiration
                             // TODO: wait on signal
-                            this_thread::sleep_for(7s); // it has job, so can sleep for a long time.
+                            this_thread::sleep_for(5s); // it has job, so can sleep for a long time.
                             if(cbd.bytesWritten == sizeDownloaded) {
                                 bNoData = true;
                                 spdlog::error("no data. please check server/camera network connections! will stop and retry");
@@ -747,7 +747,7 @@ private:
                 if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
                     spdlog::info("\trecording on this instance {}, try to stop ", routekey);
                     if(this->statRTPlay.contains(devSn)) {
-                        this->statRTPlay[devSn] = EZCMD::RTSTOP;
+                        this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
                     }
                     else {
                         spdlog::info("\t\tbut can't find any running job on this instance, ignored");
@@ -805,7 +805,11 @@ private:
             if(devJson.count("duration") != 0) {
                 if(devJson.at("duration").is_number_integer()) {
                     duration = devJson["duration"].get<int>();
+                }else{
+                    spdlog::warn("duratoin is not a number. use default");
                 }
+            }else{
+                spdlog::warn("no duration configured. use default");
             }
  
             ezCmd = VerifyAMQPMsg(dev, devJson);
@@ -836,7 +840,7 @@ private:
                     
                     this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
                     string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
-                    this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                    this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
                     if(ezCmd == EZCMD::RTPLAY_CTN) {
                         RedisSAdd(this->REDIS_KEY_CTN_JOBS, this->RedisMakeRTPlayKey(devSn, uuid));
                     }
@@ -866,8 +870,8 @@ private:
                                 return;
                             }
                             this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
-                            string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey);
-                            this->statRTPlay[devSn] = EZCMD::RTPLAY;
+                            string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
+                            this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
                             this->numRTPlayRunning++;
                             // no ack
                             return;
@@ -949,7 +953,7 @@ private:
         }
         else {
             if(this->statRTPlay.contains(devSn)) {
-                this->statRTPlay[devSn] = EZCMD::RTSTOP;
+                this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
             }
             else {
                 spdlog::error("Method_OnRTStopMessage error rtstop, no running recording on this instance: {}", devSn);
