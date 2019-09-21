@@ -61,6 +61,7 @@ private:
     safe_vector<EZJobDetail> jobs;
     safe_vector<DEVICE_INFO_EX> jobsRTPlay;
     json statRTPlay;
+    mutex mutStatRTPlay;
 
     atomic<int> numRTPlayRunning = 0;
     bool bMessageDone = true;
@@ -378,7 +379,7 @@ private:
                         if(ret != 0) {
                             cbd.fout->close();
                             delete cbd.fout;
-                            this->statRTPlay.erase(devSn);
+                            this->statRTPlay[devSn]= (int)EZCMD::NONE;
                             string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
                             RedisDelete(key);
                             this->numRTPlayRunning--;
@@ -423,7 +424,7 @@ private:
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                 }
 
-                                this->statRTPlay.erase(devSn);
+                                this->statRTPlay[devSn] = (int)EZCMD::NONE;
                                 string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
                                 this->RedisDelete(key);
                                 this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
@@ -686,7 +687,7 @@ private:
             }
         }
         catch(exception e) {
-            cerr << "erry in veryfiy msg: " << devJson.dump() << e.what();
+            spdlog::error("exception in veryfiy msg {}: {}", devJson.dump(), e.what());
         }
 
         return ezCmd;
@@ -746,7 +747,7 @@ private:
                 // existed on this instance
                 if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
                     spdlog::info("\trecording on this instance {}, try to stop ", routekey);
-                    if(this->statRTPlay.contains(devSn)) {
+                    if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
                         this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
                     }
                     else {
@@ -952,7 +953,7 @@ private:
             spdlog::error("Method_OnRTStopMessage invalid msg to process: {}" ,msg);
         }
         else {
-            if(this->statRTPlay.contains(devSn)) {
+            if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
                 this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
             }
             else {
