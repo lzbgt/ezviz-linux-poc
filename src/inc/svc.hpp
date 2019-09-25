@@ -834,7 +834,7 @@ private:
                 if(routekey.empty()) {
                     // new capture
                     // message flow control
-                    spdlog::info("running jobs on this instance: {}, allowed max: ", this->numRTPlayRunning ,this->envConfig.numConcurrentDevs);
+                    spdlog::info("running jobs on this instance: {}, allowed max: {}", this->numRTPlayRunning ,this->envConfig.numConcurrentDevs);
                     if(this->numRTPlayRunning >= this->envConfig.numConcurrentDevs) {
                         //TODO: stop consume, pause is not IMPLEMENTED in the library, use cancel instead
                         // this->chanRTPlay->pause();
@@ -864,11 +864,11 @@ private:
                 else {
                     // existed
                     if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
-                        spdlog::warn("\talready recording on this instance {}, ingnore the message", routekey);
+                        spdlog::warn("\talready recording on this instance {}, ingnore the message: {}", routekey, msg);
                     }
                     else {
                         // check alive
-                        spdlog::info("\talready recording on another instance: {}", routekey);
+                        spdlog::info("\talready recording on another instance: {}. msg: {}", routekey, msg);
                         if(this->RedisGet(routekey) == "") {
                             spdlog::info("\t\tbut it was a dead job before, try createing new on this instance");
                             spdlog::info("running jobs on this instance: {}, allowed max: {}", this->numRTPlayRunning , this->envConfig.numConcurrentDevs);
@@ -905,11 +905,14 @@ private:
                             msg["uuid"] = uuid;
                             msg["quality"] = 0;
 
-                            RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 3*1000);
-                            SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
+                            // RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 0);
+                            // SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
 
                             // set ttl
-                            this_thread::sleep_for(chrono::seconds(2));
+                            while(!(RedisGet(RedisMakeRTPlayKey(devSn, uuid)).empty())){
+                                this_thread::sleep_for(chrono::seconds(2));
+                            }
+                            
                             this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
                             return;
                         }
