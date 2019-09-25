@@ -39,7 +39,8 @@ body["quality"] = 0
 body["devSn"] = sys.argv[1]
 
 if sys.argv[2] == "rtplay":
-    body["cmd"] = "rtplay"
+    body["cmd"] = "rtplay_continue"
+    body["duration"] = 30*60
     chanPlay.basic_publish(exchange='ezviz.exchange.rtplay', routing_key='rtplay', body= json.dumps(body))
 else:
     body["cmd"] = "rtstop"
