@@ -387,7 +387,12 @@ private:
                             string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
                             RedisDelete(key);
                             this->numRTPlayRunning--;
-                            this->chanRTPlay->ack(dev.deliveryTag);
+                            if(ezCmd == EZCMD::RTPLAY_CTN){
+                                this->chanRTPlay->reject(dev.deliveryTag);
+                            }else{
+                                this->chanRTPlay->ack(dev.deliveryTag);
+                            }
+                            
                             continue;
                         }
                         // wait for stop cmd or timeout
