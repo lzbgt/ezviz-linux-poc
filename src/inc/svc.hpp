@@ -702,98 +702,15 @@ private:
         return ezCmd;
     }
 
-
-    // external api
-    //auto OnRTStopMessage_ = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-    void Method_OnRTStopMessage_(const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
-    {
-        size_t len = message.bodySize();
-        char *msg = new char[len+1];
-        msg[len] = 0;
-        memcpy(msg, message.body(), len);
-        string s = string(msg);
-        spdlog::info("[======OnRTStopMessage_: {}", msg);
-        ST_ES_DEVICE_INFO dev = {};
-        json devJson;
-        string devSn, devCode, uuid;
-        int chanId = 1;
-
-        try {
-            devJson = json::parse(s);
-            devSn = devJson["devSn"];
-            devCode = devJson["devCode"];
-            uuid = devJson["uuid"];
-            if(devJson.count("chanId") != 0) {
-                if(devJson.at("chanId").is_number_integer()) {
-                    chanId = devJson["chanId"].get<int>();
-                }else{
-                    spdlog::warn("invalid chanId, using default 1");
-                }
-            }
-        }
-        catch(exception e) {
-            this->chanRTStop_->ack(deliveryTag);
-            spdlog::error("exception parse json in Method_OnRTStopMessage_: {}\n]====== End OnRTStopMessage_",  e.what());
-            // default ACK
-            return;
-        }
-
-        EZCMD ezCmd = VerifyAMQPMsg(dev,devJson);
-
-        if(EZCMD::RTSTOP != ezCmd) {
-            spdlog::warn("Method_OnRTStopMessage_ invalid messge: {} ", msg);
-        }
-        else {
-             spdlog::info("check if this dev is in recording...");
-            // query redis
-            string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
-            // check redis for existing job
-            if(routekey.empty()) {
-                // no instance
-                spdlog::info("Method_OnRTStopMessage_ no existing recording. ignore this message");
-            }
-            else {
-                // existed on this instance
-                if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
-                    spdlog::info("\trecording on this instance {}, try to stop ", routekey);
-                    {
-                        auto lg = lock_guard(this->mutStatRTPlay);
-                        if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
-                            this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
-                        }
-                        else {
-                            spdlog::info("\t\tbut can't find any running job on this instance, ignored");
-                        }  
-                    }
-                    
-                }
-                else {
-                    if(this->RedisGet(routekey).empty()) {
-                        spdlog::info("\tthe recording instance {} is dead, drop the message and delete the job", routekey);
-                        RedisDelete(RedisMakeRTPlayKey(devSn, uuid));
-                    }
-                    else {
-                        spdlog::info("\trerouting rtstop message to the recording instance {}", routekey);
-                        SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);
-                    }
-                }
-            }
-        }
-        // default ACK
-        this->chanRTStop_->ack(deliveryTag);
-        spdlog::info("]======OnRTStopMessage_ ");
-    }
-
-
-    // external api; auto OnRTPlayMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
-    void Method_OnRTPlayMessage(const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
+    // external api; auto OnRTMessage = [this](const AMQP::Message &message, uint64_t deliveryTag, bool redelivered) {
+    void Method_OnRTMessage(const AMQP::Message &message, uint64_t deliveryTag, bool redelivered)
     {
         size_t len = message.bodySize();
         char *msg = new char[len+1];
         msg[len] = 0;
         memcpy(msg, message.body(), len);
         // acknowledge the message
-        spdlog::info("[====== OnRTPlayMessage: {}", msg);
+        spdlog::info("[====== OnRTMessage: {}", msg);
 
         // parse
         ST_ES_DEVICE_INFO dev = {};
@@ -828,10 +745,7 @@ private:
  
             ezCmd = VerifyAMQPMsg(dev, devJson);
 
-            if(EZCMD::RTPLAY != ezCmd && EZCMD::RTPLAY_CTN != ezCmd) {
-                spdlog::error("OnRTPlayMessage invalid messge");
-            }
-            else {
+            if(EZCMD::RTPLAY == ezCmd ||EZCMD::RTPLAY_CTN == ezCmd) {
                 spdlog::info("check if this dev is in recording...");
                 // query redis
                 string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
@@ -910,7 +824,7 @@ private:
                             msg["uuid"] = uuid;
                             msg["quality"] = 0;
 
-                            // RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 0);
+                            RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 0);
                             // SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
 
                             // set ttl
@@ -923,19 +837,56 @@ private:
                         }
                     }
                 }
+            }else if(EZCMD::RTSTOP == ezCmd){
+                spdlog::info("check if this dev is in recording...");
+                // query redis
+                string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
+                // check redis for existing job
+                if(routekey.empty()) {
+                    // no instance
+                    spdlog::info("Method_OnRTMessage no existing recording. ignore this message");
+                }
+                else {
+                    // existed on this instance
+                    if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
+                        spdlog::info("\trecording on this instance {}, try to stop ", routekey);
+                        {
+                            auto lg = lock_guard(this->mutStatRTPlay);
+                            if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
+                                this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
+                            }
+                            else {
+                                spdlog::info("\t\tbut can't find any running job on this instance, ignored");
+                            }  
+                        }
+                        
+                    }
+                    else {
+                        if(this->RedisGet(routekey).empty()) {
+                            spdlog::info("\tthe recording instance {} is dead, drop the message and delete the job", routekey);
+                            RedisDelete(RedisMakeRTPlayKey(devSn, uuid));
+                        }
+                        else {
+                            spdlog::info("\trerouting rtstop message to the recording instance {}", routekey);
+                            SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg);
+                        }
+                    }
+                }
+            }else{
+                spdlog::error("OnRTMessage invalid messge");
             }
 
         }
         catch(exception e) {
             // default ACK
             this->chanRTPlay->ack(deliveryTag);
-            spdlog::error("exception in parse message json, ignore message: {}\n]====== End OnRTPlayMessage", e.what());
+            spdlog::error("exception in parse message json, ignore message: {}\n]====== End OnRTMessage", e.what());
             return;
         }
 
         // no default ACK
         this->chanRTPlay->ack(deliveryTag);
-        spdlog::info("]====== End OnRTPlayMessage");
+        spdlog::info("]====== End OnRTMessage");
     }   
 
 
@@ -1060,27 +1011,27 @@ public:
             delete msg;
         };
 
-        auto OnRTStopMessage_ = bind(&EZVizVideoService::Method_OnRTStopMessage_, this, _1, _2, _3);
-        auto OnRTPlayMessage = bind(&EZVizVideoService::Method_OnRTPlayMessage, this, _1, _2, _3);
-        auto OnRTStopMessage = bind(&EZVizVideoService::Method_OnRTPlayMessage, this, _1, _2, _3);
+        // auto OnRTMessage = bind(&EZVizVideoService::Method_OnRTMessage, this, _1, _2, _3);
+        auto OnRTMessage = bind(&EZVizVideoService::Method_OnRTMessage, this, _1, _2, _3);
+        auto OnRTStopMessage = bind(&EZVizVideoService::Method_OnRTStopMessage, this, _1, _2, _3);
         // check run mode
         if(this->envConfig.mode == EZMODE::PLAYBACK) {
-            // start consuming from the queue, and install the callbacks
-            this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
-            .onReceived(OnPlaybackMessage)
-            .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
-            .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
+            // // start consuming from the queue, and install the callbacks
+            // this->chanPlayback->consume(this->envConfig.amqpConfig.playbackQueName)
+            // .onReceived(OnPlaybackMessage)
+            // .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
+            // .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
         }
         else if(this->envConfig.mode == EZMODE::RTPLAY) {
             // // play queue
             this->chanRTPlay->consume(this->envConfig.amqpConfig.rtplayQueName)
-            .onReceived(OnRTPlayMessage)
+            .onReceived(OnRTMessage)
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
             .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
 
             // stop_ queue (external)
             this->chanRTStop_->consume(this->envConfig.amqpConfig.rtstopQueName_)
-            .onReceived(OnRTStopMessage_)
+            .onReceived(OnRTMessage)
             .onSuccess(OnChanOperationStart)  //  channel operation start event, eg. starting heartbeat
             .onError(OnChanOperationFailed);   // channel operation failed event. eg. failed heartbeating?
 
