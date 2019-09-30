@@ -232,73 +232,6 @@ private:
         return 0;
     }
 
-    // void DownloadOneFile(ST_ES_DEVICE_INFO &dev, ST_ES_RECORD_INFO &di, string appKey, string token)
-    // {
-    //     ES_RECORD_INFO *rip = &di;
-    //     int ret = 0;
-    //     tm tm1 = {}, tm2 = {};
-    //     char tmStr[15] = {};
-    //     strptime(rip->szStartTime, "%Y-%m-%d %H:%M:%S", &tm1);
-    //     strptime(rip->szStopTime, "%Y-%m-%d %H:%M:%S", &tm2);
-    //     time_t t1 = mktime(&tm1), t2 = mktime(&tm2);
-    //     int secs = difftime(t2, t1);
-    //     spdlog::info("secs: " << secs << endl;
-    //     strftime(tmStr, sizeof(tmStr), "%Y%m%d%H%M%S", &tm1);
-    //     string filename = tmStr;
-    //     filename = this->envConfig.videoDir + "/" + filename;
-    //     filename += string("_") + string(dev.szDevSerial) + "_" + to_string(secs) + ".mpg";
-    //     cout << "filename: " << filename << endl;
-    //     ofstream *fout = new ofstream();
-    //     fout->open(filename, ios_base::binary | ios_base::trunc);
-    //     cout << "file opened: " << filename << endl;
-    //     EZCallBackUserData cbd;
-    //     cbd.fout = fout;
-    //     cbd.stat = 1;
-    //     cbd.bytesWritten = 0;
-    //     cbd.numRetried = 0;
-    //     ES_STREAM_CALLBACK scb = {NULL, NULL, (void *)&cbd};
-    //     HANDLE handle = NULL;
-    //     ret = ESOpenSDK_StartPlayBack(token.c_str(), dev, *rip, scb, handle);
-    //     if (0 != ret) {
-    //         delete cbd.fout;
-    //         return;
-    //     }
-
-    //     ESOpenSDK_StopPlayBack(handle);
-    //     cbd.fout->flush();
-    //     cbd.fout->close();
-    //     delete cbd.fout;
-    // }
-
-    void BootStrapDownloader(thread *threads, int num)
-    {
-        // create download threads, and loop over tasks for ever
-        for(int i = 0; i < num; i++) {
-            threads[i] = thread([this, num] {
-                while (this->jobs.size() > 0)
-                {
-                    // download one record
-                    EZJobDetail reci = this->jobs.pop_back();
-                    if (reci.devsn[0] != 0) {
-                        int ret = 0;
-                        char tmStr[15] = {0};
-                        thread th[5];
-                        // TODO: concurrently download cloud file
-                        for(int i = 0; i < num; i++) {
-
-                        }
-                        // SD card file
-                        auto sdt = thread([&reci]() {
-                            for(int j = 0; j < reci.fileNumSD; j++) {
-                                //
-                            }
-                        });
-                    }
-                }// while
-            });
-        }
-    }
-
     // rtplay
     void BootStrapRTPlay(thread *threads, int num)
     {
@@ -377,6 +310,7 @@ private:
                         HANDLE handle = NULL;
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev.base, scb, handle);
                         if(ret != 0) {
+                            spdlog::error("ESOpenSDK_StartRealPlay ret: \n\n{}\n\n", ret);
                             cbd.fout->close();
                             delete cbd.fout;
                             {
@@ -388,7 +322,7 @@ private:
                             RedisDelete(key);
                             this->numRTPlayRunning--;
                             if(ezCmd == EZCMD::RTPLAY_CTN){
-                                this->chanRTPlay->reject(dev.deliveryTag);
+                                this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
                             }else{
                                 this->chanRTPlay->ack(dev.deliveryTag);
                             }
@@ -417,7 +351,7 @@ private:
                                 }
                                 else {
                                     if( cbd.bytesWritten == 0) {
-                                        spdlog::error("video file empty ignored. please check network connections");
+                                        spdlog::error("\n\n{} video file empty ignored. please check network connections. \twill not try to automaticaly connect to this camera when using continous recoding\n\n", devSn);
                                         system((string("rm -f ") + filename).c_str());
                                     }else{
                                         string program = string("nohup ") + this->envConfig.uploadProgPath + string(" -s ") + this->envConfig.apiSrvAddr +  string(" -i ") + filename + string(" &");
@@ -427,7 +361,7 @@ private:
                                 }
                                 
                                 // check if need continue to record
-                                if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN) {
+                                if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten != 0) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
                                 }else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
@@ -469,6 +403,7 @@ private:
                     }
                 }
             });
+            threads[i].detach();
         }
     }
     //
@@ -798,7 +733,12 @@ private:
                                 spdlog::info("\tflow control, reject & cancel consumming");
                                 // this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
                                 // this->chanRTPlay->cancel(this->envConfig.amqpConfig.rtstopRouteKey);
-                                this->chanRTPlay->ack(deliveryTag);
+                                if(EZCMD::RTPLAY_CTN == ezCmd) {
+                                     this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
+                                }else{
+                                    this->chanRTPlay->ack(deliveryTag);
+                                }
+                                
                                 return;
                             }
                             this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
@@ -826,11 +766,6 @@ private:
 
                             RedisExpireMs(this->RedisMakeRTPlayKey(devSn, uuid), 0);
                             // SendAMQPMsg(this->chanRTStop, this->envConfig.amqpConfig.rtstopExchangeName, routekey, msg.dump().c_str());
-
-                            // set ttl
-                            while(!(RedisGet(RedisMakeRTPlayKey(devSn, uuid)).empty())){
-                                this_thread::sleep_for(chrono::seconds(2));
-                            }
                             
                             this->chanRTPlay->reject(deliveryTag, AMQP::requeue);
                             return;
@@ -838,7 +773,7 @@ private:
                     }
                 }
             }else if(EZCMD::RTSTOP == ezCmd){
-                spdlog::info("check if this dev is in recording...");
+                spdlog::info("rtstop check if this dev is in recording...");
                 // query redis
                 string routekey = RedisGet(RedisMakeRTPlayKey(devSn, uuid));
                 // check redis for existing job
@@ -875,6 +810,9 @@ private:
             }else{
                 spdlog::error("OnRTMessage invalid messge");
             }
+
+            this->chanRTStop_->ack(deliveryTag);
+            return;
 
         }
         catch(exception e) {
@@ -1011,7 +949,6 @@ public:
             delete msg;
         };
 
-        // auto OnRTMessage = bind(&EZVizVideoService::Method_OnRTMessage, this, _1, _2, _3);
         auto OnRTMessage = bind(&EZVizVideoService::Method_OnRTMessage, this, _1, _2, _3);
         auto OnRTStopMessage = bind(&EZVizVideoService::Method_OnRTStopMessage, this, _1, _2, _3);
         // check run mode
@@ -1076,9 +1013,6 @@ public:
         // thread worker
         thread worker = thread([this]() {
             thread *threads = new thread[this->envConfig.numConcurrentDevs];
-            // if(this->envConfig.mode == EZMODE::PLAYBACK) {
-            //     BootStrapDownloader(threads, concurrent);
-            // }
 
             if(this->envConfig.mode == EZMODE::RTPLAY) {
                 BootStrapRTPlay(threads, this->envConfig.numConcurrentDevs);
@@ -1091,31 +1025,6 @@ public:
         // check network status and do heartbeating
         int firstRun = 0;
         while(true) {
-            // check failed continue jobs
-            // if(firstRun % 100 == 0) {
-            //     auto v = GetCtnJobs();
-            //     for(auto &i:v) {
-            //         if(i.empty()) {
-            //             continue;
-            //         }
-            //         auto s = myutils::split(i, ':');
-            //         if(s.size() != 3) {
-            //             continue;
-            //         }
-            //         string sn = s[1];
-            //         string uuid = s[2];
-            //         json body;
-            //         body["cmd"] = "rtplay_continue";
-            //         body["chanId"] = 1;
-            //         body["devSn"] = sn;
-            //         body["devCode"] = "bcd";
-            //         body["uuid"] = uuid;
-            //         body["duration"] = 10*60;
-            //         body["quality"] = 0;
-            //         SendAMQPMsg(this->chanRTPlay, this->envConfig.amqpConfig.rtplayExchangeName, this->envConfig.amqpConfig.rtplayRouteKey, body.dump().data());
-            //     }
-            // }
-
             firstRun++;    
             unique_lock<std::mutex> lk_detach(mutDetach);
             stat = this->cvDetach.wait_for(lk_detach, 7s);

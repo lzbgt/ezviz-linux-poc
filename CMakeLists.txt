@@ -14,10 +14,10 @@ link_directories(${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/EZServerOpenSDK/lib/linu
 set(FRAMEWORKLIB crypto ssl curl protobuf expat amqpcpp dl uv cpp_redis tacopie PocoFoundation PocoNet PocoNetSSL)
 set(LIB hpr hlog opensslwrap ys_net ezviz_streamclient ezserveropensdk)
 
-add_compile_options(
-  "-Wextra" "-fexceptions"
-  "$<$<CONFIG:DEBUG>:-O0;-g3;-ggdb>"
-)
+#add_compile_options(
+#  "-Wextra" "-fexceptions"
+#  "$<$<CONFIG:DEBUG>:-O0;-g3;-ggdb>"
+#)
 
 link_libraries(${FRAMEWORKLIB} ${LIB})
 
