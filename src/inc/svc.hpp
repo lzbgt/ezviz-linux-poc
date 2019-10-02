@@ -285,6 +285,7 @@ private:
                 cbd.bytesWritten = 0;
                 cbd.numRetried = 0;
                 ES_STREAM_CALLBACK scb = {ezvizMsgCb, ezvizDataCb, (void *)&cbd};
+                int64_t nSnapCnt =0;
                 while(true) {
                     if(this->jobsRTPlay.size() > 0) {
                         // double check
@@ -333,9 +334,11 @@ private:
                         auto chro_start = high_resolution_clock::now();
                         unsigned long long sizeDownloaded = cbd.bytesWritten;
                         bool bNoData = false;
+                        int64_t nWaitCnt = 0;
                         while(true) {
                             // check to stop
                             // timeout of job
+                            nWaitCnt++;
                             string routekey = this->RedisGet(this->RedisMakeRTPlayKey(devSn, dev.uuid));
 
                             if(bNoData || cbd.stat == 0 || this->statRTPlay[devSn].get<int>() == EZCMD::RTSTOP||routekey.empty()) {
@@ -378,28 +381,38 @@ private:
                                     // play queue
                                 }
                                 break;  
-                            }
-                            // check expiration
-                            // TODO: wait on signal
-                            this_thread::sleep_for(5s); // it has job, so can sleep for a long time.
-                            if(cbd.bytesWritten == sizeDownloaded) {
-                                bNoData = true;
-                                spdlog::error("no data. please check server/camera network connections! will stop and retry");
-                                continue;
-                            }
-                            auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start);
-                            if(duora.count() >= 60) {
-                                spdlog::info("{} speed EST: {} KB/s", filename, (cbd.bytesWritten - sizeDownloaded) / (duora.count() * 1024.0 + 1));
-                                // reset size
-                                sizeDownloaded = cbd.bytesWritten;
-                                // reset time start
-                                chro_start = high_resolution_clock::now();
+                            }else{
+                                // check expiration
+                                // TODO: wait on signal
+                                if(nWaitCnt % 10 == 0) {
+                                    spdlog::info("watting for job {} to compete: {}", devSn, nWaitCnt);
+                                }
+                                
+                                this_thread::sleep_for(7s); // it has job, so can sleep for a long time.
+                                if(cbd.bytesWritten == sizeDownloaded) {
+                                    bNoData = true;
+                                    spdlog::error("no data. please check server/camera network connections! will stop and retry");
+                                    continue;
+                                }
+                                auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start);
+                                if(duora.count() >= 60) {
+                                    spdlog::info("{} speed EST: {} KB/s", filename, (cbd.bytesWritten - sizeDownloaded) / (duora.count() * 1024.0 + 1));
+                                    // reset size
+                                    sizeDownloaded = cbd.bytesWritten;
+                                    // reset time start
+                                    chro_start = high_resolution_clock::now();
+                                }
                             }
                         }
                     }
                     else {
                         //snap for new job
+                        nSnapCnt++;
                         this_thread::sleep_for(500ms);
+                        if(nSnapCnt % 1000 == 0) {
+                            spdlog::info("snap for new job");
+                        }
+                        
                     }
                 }
             });
