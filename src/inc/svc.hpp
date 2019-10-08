@@ -323,9 +323,17 @@ private:
                             RedisDelete(key);
                             this->numRTPlayRunning--;
                             if(ezCmd == EZCMD::RTPLAY_CTN){
-                                this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
+                                if(ret == 302003 || ret == 320007 || ret == 510121 || ret == 525404 || ret == 550012) {
+                                    this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
+                                    spdlog::warn("device {} is not online, keep retry", devSn);
+                                }else{
+                                    this->chanRTPlay->ack(dev.deliveryTag);
+                                    spdlog::error("ignore device: {}", devSn);
+                                }
+                                
                             }else{
                                 this->chanRTPlay->ack(dev.deliveryTag);
+                                spdlog::error("ignore device: {}", devSn);
                             }
                             
                             continue;
