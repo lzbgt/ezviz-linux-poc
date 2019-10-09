@@ -325,15 +325,15 @@ private:
                             if(ezCmd == EZCMD::RTPLAY_CTN){
                                 if(ret == 302003 || ret == 320007 || ret == 510121 || ret == 525404 || ret == 550012) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
-                                    spdlog::warn("device {} is not online, keep retry", devSn);
+                                    spdlog::warn("device {} is not online, keep retry. open retcode: {}", devSn, ret);
                                 }else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
-                                    spdlog::error("ignore device: {}", devSn);
+                                    spdlog::error("ignore device: {}, open retcode: {}", devSn, ret);
                                 }
                                 
                             }else{
                                 this->chanRTPlay->ack(dev.deliveryTag);
-                                spdlog::error("ignore device: {}", devSn);
+                                spdlog::error("ignore device: {}. open retcode: {}", devSn, ret);
                             }
                             
                             continue;
@@ -362,7 +362,7 @@ private:
                                 }
                                 else {
                                     if( cbd.bytesWritten == 0) {
-                                        spdlog::error("\n\n{} video file empty ignored. please check network connections. \twill not try to automaticaly connect to this camera when using continous recoding\n\n", devSn);
+                                        spdlog::error("{} video file empty ignored. please check network connections. \twill not try to automatically connect to this camera when using continous recording\n\n", devSn);
                                         system((string("rm -f ") + filename).c_str());
                                     }else{
                                         string program = string("nohup ") + this->envConfig.uploadProgPath + string(" -s ") + this->envConfig.apiSrvAddr +  string(" -i ") + filename + string(" &");
