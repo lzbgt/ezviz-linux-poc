@@ -311,7 +311,7 @@ private:
                         HANDLE handle = NULL;
                         ret = ESOpenSDK_StartRealPlay(this->ezvizToken.c_str(), dev.base, scb, handle);
                         if(ret != 0) {
-                            spdlog::error("ESOpenSDK_StartRealPlay ret: \n\n{}\n\n", ret);
+                            spdlog::error("{} ESOpenSDK_StartRealPlay ret: \n\n{}\n\n", devSn, ret);
                             cbd.fout->close();
                             delete cbd.fout;
                             {
@@ -399,7 +399,7 @@ private:
                                 this_thread::sleep_for(7s); // it has job, so can sleep for a long time.
                                 if(cbd.bytesWritten == sizeDownloaded) {
                                     bNoData = true;
-                                    spdlog::error("no data. please check server/camera network connections! will stop and retry");
+                                    spdlog::error("{} no data in 7s. please check server/camera network connections! will stop and retry", devSn);
                                     continue;
                                 }
                                 auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start);
