@@ -570,9 +570,8 @@ private:
             }
         }
 
-        this->InitRedis();
-
         if(type_ & 2) {
+            this->InitRedis();
             this->InitAMQP();
         }
 
