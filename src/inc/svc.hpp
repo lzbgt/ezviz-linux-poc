@@ -372,6 +372,11 @@ private:
                                 }
                                 
                                 // check if need continue to record
+                                this->statRTPlay[devSn] = (int)EZCMD::NONE;
+                                string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
+                                this->RedisDelete(key);
+                                this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
+                                
                                 if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten != 0) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
                                 }else if(ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten == 0){
@@ -381,10 +386,7 @@ private:
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                 }
 
-                                this->statRTPlay[devSn] = (int)EZCMD::NONE;
-                                string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                                this->RedisDelete(key);
-                                this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
+                                
                                 this->numRTPlayRunning--;
                                 
                                 if(this->numRTPlayRunning < this->envConfig.numConcurrentDevs) {
@@ -396,7 +398,7 @@ private:
                                 // check expiration
                                 // TODO: wait on signal
                                 if(nWaitCnt % 10 == 0) {
-                                    spdlog::info("watting for job {} to compete: {}", devSn, nWaitCnt);
+                                    spdlog::info("watting for job {} to complete: {}", devSn, nWaitCnt);
                                 }
                                 
                                 this_thread::sleep_for(7s); // it has job, so can sleep for a long time.
