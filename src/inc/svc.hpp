@@ -374,6 +374,9 @@ private:
                                 // check if need continue to record
                                 if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten != 0) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
+                                }else if(ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten == 0){
+                                    ESOpenSDK_Fini();
+                                    _init(4);
                                 }else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                 }
