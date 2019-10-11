@@ -61,7 +61,6 @@ private:
     safe_vector<EZJobDetail> jobs;
     safe_vector<DEVICE_INFO_EX> jobsRTPlay;
     json statRTPlay;
-    mutex mutStatRTPlay;
 
     atomic<int> numRTPlayRunning = 0;
     bool bMessageDone = true;
@@ -314,11 +313,8 @@ private:
                             spdlog::error("{} ESOpenSDK_StartRealPlay ret: \n\n{}\n\n", devSn, ret);
                             cbd.fout->close();
                             delete cbd.fout;
-                            {
-                                auto lg = lock_guard(this->mutStatRTPlay);
-                                this->statRTPlay[devSn]= (int)EZCMD::NONE;
-                            }
                             
+                            this->statRTPlay[devSn]= (int)EZCMD::NONE;
                             string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
                             RedisDelete(key);
                             this->numRTPlayRunning--;
@@ -381,8 +377,8 @@ private:
                                 if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten != 0) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
                                 }else if(ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten == 0){
-                                    ESOpenSDK_Fini();
-                                    _init(4);
+                                    this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
+                                    bNoData = true;
                                 }else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                 }
@@ -396,8 +392,7 @@ private:
 
                                 // TODO: retry or reset sdk or just crash myself for a restart?
                                 if(bNoData) {
-                                    ESOpenSDK_Fini();
-                                    _init(4);
+                                    // retry.
                                 }
 
                                 break;  
@@ -411,7 +406,7 @@ private:
                                 this_thread::sleep_for(7s); // it has job, so can sleep for a long time.
                                 if(cbd.bytesWritten == sizeDownloaded) {
                                     bNoData = true;
-                                    spdlog::error("{} no data in 7s. please check server/camera network connections! will stop and retry", devSn);
+                                    spdlog::error("{} no data in 7s. please check server/camera network connections! will crash myself.", devSn);
                                     continue;
                                 }
                                 auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start);
@@ -735,10 +730,8 @@ private:
                     
                     this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd, duration});
                     string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
-                    {
-                        auto lg = lock_guard(this->mutStatRTPlay);
-                        this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
-                    }
+                    
+                    this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
                     
                     if(ezCmd == EZCMD::RTPLAY_CTN) {
                         RedisSAdd(this->REDIS_KEY_CTN_JOBS, this->RedisMakeRTPlayKey(devSn, uuid));
@@ -775,10 +768,9 @@ private:
                             }
                             this->jobsRTPlay.push_back(DEVICE_INFO_EX{dev, uuid, deliveryTag, ezCmd});
                             string res = RedisPut(this->RedisMakeRTPlayKey(devSn, uuid),  this->envConfig.amqpConfig.rtstopRouteKey, duration*1000);
-                            {
-                                auto lg = lock_guard(this->mutStatRTPlay);
-                                this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
-                            }
+
+                            this->statRTPlay[devSn] = (int)EZCMD::RTPLAY;
+
                             
                             this->numRTPlayRunning++;
                             // no ack
@@ -818,7 +810,7 @@ private:
                     if(routekey == this->envConfig.amqpConfig.rtstopRouteKey) {
                         spdlog::info("\trecording on this instance {}, try to stop ", routekey);
                         {
-                            auto lg = lock_guard(this->mutStatRTPlay);
+                            
                             if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
                                 this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
                             }
@@ -898,7 +890,7 @@ private:
             spdlog::error("Method_OnRTStopMessage invalid msg to process: {}" ,msg);
         }
         else {
-            auto lg = lock_guard(this->mutStatRTPlay);
+
             if(this->statRTPlay.contains(devSn) && this->statRTPlay[devSn].get<int>() != EZCMD::NONE) {
                 this->statRTPlay[devSn] = (int)EZCMD::RTSTOP;
             }
