@@ -370,6 +370,7 @@ private:
                                         system(program.c_str());
                                     }
                                 }
+
                                 
                                 // check if need continue to record
                                 this->statRTPlay[devSn] = (int)EZCMD::NONE;
@@ -385,7 +386,6 @@ private:
                                 }else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                 }
-
                                 
                                 this->numRTPlayRunning--;
                                 
@@ -393,6 +393,13 @@ private:
                                     // TODO: resume is not supported in the lib
                                     // play queue
                                 }
+
+                                // TODO: retry or reset sdk or just crash myself for a restart?
+                                if(bNoData) {
+                                    ESOpenSDK_Fini();
+                                    _init(4);
+                                }
+
                                 break;  
                             }else{
                                 // check expiration
