@@ -319,10 +319,15 @@ private:
                             RedisDelete(key);
                             this->numRTPlayRunning--;
                             if(ezCmd == EZCMD::RTPLAY_CTN){
-                                if(ret == 302003 || ret == 320007 || ret == 510121 || ret == 525404 || ret == 550012) {
+                                if(ret == 302003 || ret == 100028 || ret == 320007 || ret == 510121 || ret == 525404 || ret == 550012) {
                                     this->chanRTPlay->reject(dev.deliveryTag, AMQP::requeue);
-                                    spdlog::warn("device {} is not online, keep retry. open retcode: {}", devSn, ret);
-                                }else{
+                                    spdlog::warn("device {} is not reachable from sdk, keep retrying. open retcode: {}", devSn, ret);
+                                }
+                                else if(ret == 310002){
+                                    spdlog::warn("device {}. token expired??. restart. open retcode: {}", devSn, ret);
+                                    exit(1);
+                                }
+                                else{
                                     this->chanRTPlay->ack(dev.deliveryTag);
                                     spdlog::error("ignore device: {}, open retcode: {}", devSn, ret);
                                 }
@@ -371,7 +376,11 @@ private:
                                 // check if need continue to record
                                 this->statRTPlay[devSn] = (int)EZCMD::NONE;
                                 string key = this->RedisMakeRTPlayKey(devSn, dev.uuid);
-                                this->RedisDelete(key);
+                                while(this->RedisGet(key).empty() == false) {
+                                    this->RedisDelete(key);
+                                    this_thread::sleep_for(chrono::milliseconds(500));
+                                }
+                                
                                 this->RedisSRem(this->REDIS_KEY_CTN_JOBS, key);
                                 
                                 if(this->statRTPlay[devSn].get<int>() != EZCMD::RTSTOP && ezCmd == EZCMD::RTPLAY_CTN && cbd.bytesWritten != 0) {
@@ -407,6 +416,7 @@ private:
                                 if(cbd.bytesWritten == sizeDownloaded) {
                                     bNoData = true;
                                     spdlog::error("{} no data in 7s. please check server/camera network connections! will crash myself.", devSn);
+                                    exit(1);
                                     continue;
                                 }
                                 auto duora = duration_cast<seconds>(high_resolution_clock::now() - chro_start);
