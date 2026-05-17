@@ -31,3 +31,14 @@ mkdir build-playback && cd build-playback && \
 wget -O Dockerfile https://raw.githubusercontent.com/lzbgt/ezviz-linux-poc/master/deployment/downloader.Dockerfile && \
 docker build -t ezviz-playback:master .
 ```
+
+## Commercial support
+
+For teams using this repo as a starting point for IP-camera ingest, RTSP reliability, YOLO inference, RTMP restreaming, Docker deployment, playback, or long-running edge-camera services, I offer a paid integration review:
+
+- Review page: https://x2.brucelu.top/edgecam/?source=github-ezviz-linux-poc
+- Sample deliverable: https://x2.brucelu.top/edgecam/sample/
+- Checkout: https://x2.brucelu.top/edgecam/checkout/?source=github-ezviz-linux-poc
+- Product catalog: https://x2.brucelu.top/products/?source=github-ezviz-linux-poc
+
+Boundary: this is paid engineering review/support. It does not include camera credential handling, guaranteed model accuracy, managed surveillance operation, or production deployment ownership.
