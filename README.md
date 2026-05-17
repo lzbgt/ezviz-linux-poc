@@ -1,16 +1,16 @@
 # ezviz-linux-poc
 
-[![Paid_Edge_Camera_Review](https://img.shields.io/badge/Paid_Edge_Camera_Review-brightgreen)](https://x2.brucelu.top/edgecam/checkout/?source=github-badge-ezviz-linux-poc) [![Ask_First](https://img.shields.io/badge/Ask_First-blue)](https://x2.brucelu.top/products/contact/?offer=edgecam&source=github-badge-ezviz-linux-poc) [![Sample](https://img.shields.io/badge/Sample-informational)](https://x2.brucelu.top/edgecam/sample/)
+[![Paid_EZVIZ_Review](https://img.shields.io/badge/Paid_EZVIZ_Review-brightgreen)](https://x2.brucelu.top/ezviz/checkout/?source=github-badge-ezviz-linux-poc) [![Ask_First](https://img.shields.io/badge/Ask_First-blue)](https://x2.brucelu.top/products/contact/?offer=ezviz&source=github-badge-ezviz-linux-poc) [![Sample](https://img.shields.io/badge/Sample-informational)](https://x2.brucelu.top/ezviz/sample/)
 
-## Paid integration review
+## Paid EZVIZ/Linux recovery review
 
-Using this repo for a real IP-camera, RTSP reliability, Docker playback, or edge-camera service? I offer a focused Edge Camera RTSP Integration Review:
+Using this repo for a real EZVIZ camera on Linux, RTSP access, Docker playback, AMQP/Redis wiring, or reconnect failures? I offer a focused EZVIZ Linux RTSP Recovery Review:
 
-- Ask a pre-sales question: https://x2.brucelu.top/products/contact/?offer=edgecam&source=github-ezviz-linux-poc-top
-- Sample deliverable: https://x2.brucelu.top/edgecam/sample/
-- Checkout: https://x2.brucelu.top/edgecam/checkout/?source=github-ezviz-linux-poc-top
+- Ask a pre-sales question: https://x2.brucelu.top/products/contact/?offer=ezviz&source=github-ezviz-linux-poc-top
+- Sample deliverable: https://x2.brucelu.top/ezviz/sample/
+- Checkout: https://x2.brucelu.top/ezviz/checkout/?source=github-ezviz-linux-poc-top
 
-Boundary: paid support is engineering review and integration guidance. It does not include camera credential handling, guaranteed model accuracy, managed surveillance operation, or production deployment ownership.
+Boundary: paid support is engineering review and recovery guidance. It does not include camera credential handling, managed surveillance operation, guaranteed vendor API behavior, or production deployment ownership.
 
 ## requirements
 - g++ 9.1.0
