@@ -1,4 +1,7 @@
 # ezviz-linux-poc
+
+[![Paid_Edge_Camera_Review](https://img.shields.io/badge/Paid_Edge_Camera_Review-brightgreen)](https://x2.brucelu.top/edgecam/checkout/?source=github-badge-ezviz-linux-poc) [![Ask_First](https://img.shields.io/badge/Ask_First-blue)](https://x2.brucelu.top/products/contact/?offer=edgecam&source=github-badge-ezviz-linux-poc) [![Sample](https://img.shields.io/badge/Sample-informational)](https://x2.brucelu.top/edgecam/sample/)
+
 ## Paid integration review
 
 Using this repo for a real IP-camera, RTSP reliability, Docker playback, or edge-camera service? I offer a focused Edge Camera RTSP Integration Review:
